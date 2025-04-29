@@ -7,8 +7,8 @@ class ShiftController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // fetch all shift
-  Future<List<Map<String, dynamic>>> fetchShifts() async {
-    return await _fetchShiftsByStatus('Available');
+  Future<List<Map<String, dynamic>>> fetchShifts(String status) async {
+    return await _fetchShiftsByStatus(status);
   }
 
   // fetch current week date
@@ -18,8 +18,8 @@ class ShiftController {
     DateTime sunday = monday.add(Duration(days: 6));
     String startOfWeek = DateFormat('yyyy-MM-dd').format(monday);
     String endOfWeek = DateFormat('yyyy-MM-dd').format(sunday);
-
-    return await _fetchShiftsByApplicantStatus(['Accepted', 'Applied'], startOfWeek, endOfWeek);
+    print("current");
+    return await _fetchShiftsByApplicantStatus(startOfWeek, endOfWeek);
   }
 
   // fetch the upcoming week
@@ -29,26 +29,48 @@ class ShiftController {
     DateTime nextSunday = nextMonday.add(Duration(days: 6));
     String startOfNextWeek = DateFormat('yyyy-MM-dd').format(nextMonday);
     String endOfNextWeek = DateFormat('yyyy-MM-dd').format(nextSunday);
-
-    return await _fetchShiftsByApplicantStatus(['Accepted', 'Applied'], startOfNextWeek, endOfNextWeek);
+    print("upcoming");
+    return await _fetchShiftsByApplicantStatus(startOfNextWeek, endOfNextWeek);
   }
 
   // fetch shift with available vacancy
   Future<List<Map<String, dynamic>>> _fetchShiftsByStatus(String status) async {
     try {
+      String? currentUserId = _auth.currentUser?.uid;
+      if (currentUserId == null) return [];
+
       QuerySnapshot workshopQuery = await _firestore.collection('Workshop').get();
       List<Map<String, dynamic>> shifts = [];
 
       for (var workshop in workshopQuery.docs) {
         Map<String, dynamic> workshopData = await fetchWorkshopData(workshop.id);
+
+        // Always fetch all shifts regardless of 'Dropped' status
         QuerySnapshot shiftQuery = await _firestore
             .collection('Workshop')
             .doc(workshop.id)
             .collection('Shifts')
-            .where('Availability', isEqualTo: status)
             .get();
 
-        shifts.addAll(_mapShifts(shiftQuery.docs, workshop.id, workshopData));
+        List<QueryDocumentSnapshot> filteredShiftDocs;
+
+        if (status == 'Dropped') {
+          filteredShiftDocs = shiftQuery.docs.where((doc) {
+            final List<dynamic> applicants = doc['Applicant'] ?? [];
+            return applicants.any((app) =>
+            app['id'] == currentUserId && app['Status'] == 'Dropped');
+          }).toList();
+          print('Filtered dropped shifts: ${filteredShiftDocs.length}');
+        } else {
+          filteredShiftDocs = shiftQuery.docs.where((doc) {
+            final String availability = doc['Availability'] ?? '';
+            final List<dynamic> applicants = doc['Applicant'] ?? [];
+            return availability == status &&
+                !applicants.any((app) => app['id'] == currentUserId);
+          }).toList();
+        }
+
+        shifts.addAll(_mapShifts(filteredShiftDocs, workshop.id, workshopData));
       }
 
       return shifts;
@@ -59,33 +81,52 @@ class ShiftController {
   }
 
   // fetch shift with specific week and applicant status for specific applicant
-  Future<List<Map<String, dynamic>>> _fetchShiftsByApplicantStatus(List<String> status, [String? startDate, String? endDate]) async {
+  Future<List<Map<String, dynamic>>> _fetchShiftsByApplicantStatus([String? startDate, String? endDate]) async {
     try {
 
       String? currentUserId = _auth.currentUser?.uid;
       if (currentUserId == null) return [];
 
-      QuerySnapshot workshopQuery = await _firestore.collection('Workshop').get();
+      // Convert startDate and endDate to DateTime objects
+      DateTime? start = startDate != null ? DateFormat('yyyy-MM-dd').parse(startDate) : null;
+      DateTime? end = endDate != null ? DateFormat('yyyy-MM-dd').parse(endDate) : null;
+
       List<Map<String, dynamic>> shifts = [];
 
-      for (var workshop in workshopQuery.docs) {
-        Map<String, dynamic> workshopData = await fetchWorkshopData(workshop.id);
-        QuerySnapshot shiftQuery = await _firestore
-            .collection('Workshop')
-            .doc(workshop.id)
-            .collection('Shifts')
-            .where('Applicant', arrayContains: {'id': currentUserId, 'Status': status})
-            // .where('Applicant.Status', isEqualTo: status)
-            .get();
+      // Loop from startDate to endDate
+      for (DateTime? currentDay = start; currentDay!.isBefore(end!.add(Duration(days: 1))); currentDay = currentDay.add(Duration(days: 1))) {
 
-        List<Map<String, dynamic>> mappedShifts = _mapShifts(shiftQuery.docs, workshop.id, workshopData);
-        if (startDate != null && endDate != null) {
-          mappedShifts = mappedShifts.where((shift) =>
-          DateFormat('yyyy-MM-dd').parse(shift['Date']).isAfter(DateFormat('yyyy-MM-dd').parse(startDate).subtract(Duration(days: 1))) &&
-              DateFormat('yyyy-MM-dd').parse(shift['Date']).isBefore(DateFormat('yyyy-MM-dd').parse(endDate).add(Duration(days: 1)))
-          ).toList();
+        // Format the current date to match the shift date format
+        String currentDayStr = DateFormat('yyyy-MM-dd').format(currentDay);
+
+        // Query the workshops
+        QuerySnapshot workshopQuery = await _firestore.collection('Workshop').get();
+
+        for (var workshop in workshopQuery.docs) {
+          Map<String, dynamic> workshopData = await fetchWorkshopData(workshop.id);
+
+          // Query shifts where the applicant status is 'Accepted' or 'Applied' for the current day
+          QuerySnapshot shiftQuery = await _firestore
+              .collection('Workshop')
+              .doc(workshop.id)
+              .collection('Shifts')
+              .where('Date', isEqualTo: currentDayStr)
+              .where('Applicant', arrayContainsAny: [
+                {'id': currentUserId, 'Status': 'Accepted'},
+                {'id': currentUserId, 'Status': 'Applied'}
+              ])
+              .get();
+
+          List<Map<String, dynamic>> mappedShifts = _mapShifts(shiftQuery.docs, workshop.id, workshopData);
+
+          // Filter shifts to match the current day
+          mappedShifts = mappedShifts.where((shift) {
+            DateTime shiftDate = DateFormat('yyyy-MM-dd').parse(shift['Date']);
+            return shiftDate.isAtSameMomentAs(currentDay!); // Only include shifts on the current day
+          }).toList();
+
+          shifts.addAll(mappedShifts);
         }
-        shifts.addAll(mappedShifts);
       }
 
       return shifts;

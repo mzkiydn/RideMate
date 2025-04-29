@@ -64,21 +64,20 @@ class AssignController {
       // all shift
       for (var shiftDoc in shiftSnapshot.docs) {
         var shiftData = shiftDoc.data();
+
         String shiftDate = shiftData['Date'] ?? '';
         String shiftId = shiftDoc.id;
 
         List<dynamic> applicants = shiftData['Applicant'] ?? [];
-
         // all applicant for each shift
         for (var applicant in applicants) {
           String status = applicant['Status'] ?? '';
           String applicantId = applicant['id'] ?? '';
+          print("Checking shift: $shiftId, Date: $shiftDate, Applicants: $applicants");
 
           if (shiftDate == today && status == 'Accepted') {
-            print("worker: $applicantId");
-
             todayAttendance[applicantId] = await fetchMechanicDetails(workshopId, applicantId, shiftId);
-          } else if (DateTime.parse(shiftDate).isAfter(now) && status == 'Applied') {
+          } else if ((shiftDate == today || DateTime.parse(shiftDate).isAfter(now)) && status == 'Applied') {
             upcomingAttendance[applicantId] = await fetchMechanicDetails(workshopId, applicantId, shiftId);
           } else if (DateTime.parse(shiftDate).isBefore(now.add(Duration(days: 1))) && status == 'Pending') {
             pendingPayment[applicantId] = await fetchMechanicDetails(workshopId, applicantId, shiftId);
@@ -219,6 +218,40 @@ class AssignController {
     }
   }
 
+  Future<void> updateApplicantStatus(String workshopId, String shiftId, String applicantId, String newStatus) async {
+    print("Updating status to $newStatus for applicant $applicantId");
+
+    var shiftDocRef = _firestore
+        .collection('Workshop')
+        .doc(workshopId)
+        .collection('Shifts')
+        .doc(shiftId);
+
+    var shiftDoc = await shiftDocRef.get();
+
+    if (shiftDoc.exists) {
+      var applicants = List<Map<String, dynamic>>.from(shiftDoc.data()?['Applicant'] ?? []);
+
+      applicants = applicants.map((applicant) {
+        if (applicant['id'] == applicantId) {
+          return {...applicant, 'Status': newStatus};
+        }
+        return applicant;
+      }).toList();
+
+      int updatedVacancy = (shiftDoc.data()!['Vacancy'] as int) + 1;
+      String availabilityStatus = updatedVacancy == 0 ? 'Full' : 'Available';
+
+      await shiftDocRef.update({
+        'Applicant': applicants,
+        'Vacancy': updatedVacancy,
+        'Availability': availabilityStatus,
+      });
+
+      print("Applicant status updated to $newStatus.");
+    }
+  }
+
   // Parse a time string into a DateTime object
   DateTime? _parseTimeString(String timeString) {
     try {
@@ -268,15 +301,12 @@ class AssignController {
 
   // To hold the selected rating from the slider (e.g., 1.0 to 5.0)
   double currentSliderValue = 3.0; // Default at 3 stars
-
   void updateSliderValue(double value) {
     currentSliderValue = value;
     print("Slider updated to: $currentSliderValue");
   }
 
-
   // Rate a mechanic based on their performance
-// Rate a mechanic based on their performance
   Future<void> rateMechanic(String mechanicId, String workshopId, String shiftId, {double? customRating}) async {
     print("Entering rateMechanic");
 
@@ -288,13 +318,13 @@ class AssignController {
 
     if (doc.exists) {
       double currentRating = (doc.data()?['Rating'] ?? 0).toDouble();
-      int ratingCount = (doc.data()?['RatingCount'] ?? 0);
+      int ratingCount = (doc.data()?['Rating Count'] ?? 0);
 
       double updatedRating = ((currentRating * ratingCount) + finalRating) / (ratingCount + 1);
 
       await docRef.update({
         'Rating': double.parse(updatedRating.toStringAsFixed(2)),
-        'RatingCount': ratingCount + 1,
+        'Rating Count': ratingCount + 1,
       });
 
       print("Mechanic rated successfully. New rating: $updatedRating");

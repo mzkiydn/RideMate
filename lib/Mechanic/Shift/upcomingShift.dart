@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ridemate/Mechanic/Shift/detailShift.dart';
 import 'package:ridemate/Mechanic/Shift/shiftController.dart';
 
 class UpcomingShifts extends StatelessWidget {
@@ -9,48 +8,70 @@ class UpcomingShifts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        FutureBuilder<List<Map<String, dynamic>>>(
-          future: _controller.fetchUpcomingShifts(), // Calls _fetchShiftsByApplicantStatus
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text('No upcoming shifts available.'));
-            }
+    return FutureBuilder<List<List<Map<String, dynamic>>>>(
+      future: Future.wait([
+        _controller.fetchUpcomingShifts(), // Taken shifts (applied/accepted)
+        _controller.fetchShifts('Available'), // Available shifts
+      ]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        } else if (!snapshot.hasData) {
+          return const Center(child: Text('No shift data found.'));
+        }
 
-            final upcomingShifts = snapshot.data!;
-            return _buildTimetable(upcomingShifts);
-          },
-        ),
-        const SizedBox(height: 16.0),
-        Expanded(
-          child: FutureBuilder<List<Map<String, dynamic>>>(
-            future: _controller.fetchShifts(), // Calls _fetchShiftsByStatus
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              } else if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text('No available shifts.'));
-              }
+        final takenShifts = snapshot.data![0];
+        final availableShifts = snapshot.data![1];
 
-              final availableShifts = snapshot.data!;
-              return ListView.builder(
-                itemCount: availableShifts.length,
-                itemBuilder: (context, index) {
-                  final shift = availableShifts[index];
-                  return _buildShiftCard(context, shift);
-                },
-              );
-            },
+        return Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Timetable
+                if (takenShifts.isNotEmpty)
+                  _buildTimetable(takenShifts)
+                else
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text('No upcoming taken shifts.'),
+                  ),
+
+                const SizedBox(height: 16.0),
+
+                // Taken Shift Cards
+                if (takenShifts.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text('You haven\'t taken any shifts yet.'),
+                  )
+                else
+                  ...takenShifts.map((shift) => _buildShiftCard(context, shift)),
+
+                const SizedBox(height: 24.0),
+
+                // Available Shift Cards
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    'Available Shifts',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                if (availableShifts.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text('No available shifts at the moment.'),
+                  )
+                else
+                  ...availableShifts.map((shift) => _buildShiftCard(context, shift)),
+              ],
+            ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -91,6 +112,7 @@ class UpcomingShifts extends StatelessWidget {
 
   Widget _buildShiftCard(BuildContext context, Map<String, dynamic> shift) {
     return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
       child: ListTile(
         leading: const Icon(Icons.schedule, color: Colors.blue),
         title: Text(
@@ -107,12 +129,10 @@ class UpcomingShifts extends StatelessWidget {
         ),
         trailing: const Icon(Icons.arrow_forward_ios),
         onTap: () {
-          print("Shift ID: ${shift['id']}"); // Print only the shift ID
-
           Navigator.pushNamed(
             context,
             '/shiftDetail',
-            arguments: {'shiftId': shift['id']}, // Pass only the shift ID
+            arguments: {'shiftId': shift['id']},
           );
         },
       ),

@@ -135,40 +135,18 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
         trailing: isToday
             ? ElevatedButton(
           onPressed: () {
-            // Pass workshopId, shiftId, and applicantId when the button is clicked
-            print("Verify button pressed for Shift ID: $shiftId");
-            print("Data for verification: ${data}");
-
-            if (data['Workshop ID'] != null && data['Applicant ID'] != null && data['Rate'] != null) {
-              print("Calling verifyAttendance with WorkshopId: $workshopId, ShiftId: $shiftId, ApplicantId: $applicantId, Rate: ${data['Rate']?.toDouble()}");
-
-              // Call the method to verify attendance and calculate salary
-              _controller.verifyAttendance(
-                workshopId,
-                shiftId, // ShiftId
-                applicantId, // Pass specific applicant ID
-                data['Rate']?.toDouble() ?? 0.0,
-              );
-            } else {
-              // Handle missing data case
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Missing required data for verification')),
-              );
-            }
+            _confirmAndVerifyAttendance(context, _controller, workshopId, shiftId, applicantId, data['Rate']);
           },
-          child: const Text("Verify"),
+          child: Text("Verify"),
         )
+
             : Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.check_circle, color: Colors.green),
+              icon: Icon(Icons.check, color: Colors.green),
               onPressed: () {
-                _controller.approveApplicant(
-                  workshopId, // Pass workshopId
-                  shiftId, // Pass shiftId
-                  applicantId, // Pass applicantId
-                );
+                _showApprovalDialog(context, _controller, workshopId, shiftId, applicantId);
               },
             ),
             IconButton(
@@ -259,7 +237,7 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
                   await _controller.rateMechanic(
                     mechanicId,
                     data['Workshop ID'],
-                    id,
+                    data['Shift ID'],
                     customRating: rating,
                   );
                 } else {
@@ -274,4 +252,60 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
       ),
     );
   }
+
+  void _confirmAndVerifyAttendance(BuildContext context, AssignController controller, String workshopId, String shiftId, String applicantId, double rate) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Verify Attendance'),
+          content: Text('Are you sure you want to verify this mechanic\'s attendance and calculate their salary?'),
+          actions: [
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Dismiss dialog
+              },
+            ),
+            ElevatedButton(
+              child: Text('Confirm'),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop(); // Close the dialog
+                await controller.verifyAttendance(workshopId, shiftId, applicantId, rate);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showApprovalDialog(BuildContext context, AssignController controller, String workshopId, String shiftId, String applicantId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Approve Application'),
+          content: Text('Do you want to accept or reject this application?'),
+          actions: [
+            TextButton(
+              child: Text('Reject', style: TextStyle(color: Colors.red)),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await controller.updateApplicantStatus(workshopId, shiftId, applicantId, 'Rejected');
+              },
+            ),
+            ElevatedButton(
+              child: Text('Accept'),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await controller.updateApplicantStatus(workshopId, shiftId, applicantId, 'Accepted');
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 }

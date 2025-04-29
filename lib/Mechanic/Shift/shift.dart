@@ -46,32 +46,77 @@ class _ShiftState extends State<Shift> with SingleTickerProviderStateMixin {
             child: TabBarView(
               controller: _tabController,
               children: [
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _shiftController.fetchCurrentShifts(),
+                FutureBuilder<List<List<Map<String, dynamic>>>>(
+                  future: Future.wait([
+                    _shiftController.fetchCurrentShifts(),  // Accepted shifts
+                    _shiftController.fetchShifts('Dropped'),  // Dropped shifts
+                  ]),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     } else if (snapshot.hasError) {
                       return Center(child: Text('Error: ${snapshot.error}'));
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text('No current shifts available.'));
                     }
 
-                    final currentShifts = snapshot.data!;
+                    final currentShifts = snapshot.data![0];
+                    final droppedShifts = snapshot.data![1];
 
                     return Column(
                       children: [
-                        _buildTimetable(currentShifts),
+                        // Timetable for taken shifts
+                        if (currentShifts.isNotEmpty)
+                          _buildTimetable(currentShifts)
+                        else
+                          const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text('No current taken shifts.'),
+                          ),
+
                         const SizedBox(height: 16.0),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: currentShifts.length,
-                            itemBuilder: (context, index) {
-                              final shift = currentShifts[index];
-                              return _buildShiftCard(shift, true);
-                            },
+
+                        // Taken shift cards
+                        if (currentShifts.isNotEmpty)
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: currentShifts.length,
+                              itemBuilder: (context, index) {
+                                return _buildShiftCard(currentShifts[index], true);
+                              },
+                            ),
+                          )
+                        else
+                          const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text('No current taken shifts.'),
+                          ),
+
+                        const SizedBox(height: 24.0),
+
+                        // Dropped shifts section
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Dropped Shifts',
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
+
+                        const SizedBox(height: 8),
+
+                        if (droppedShifts.isNotEmpty)
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: droppedShifts.length,
+                              itemBuilder: (context, index) {
+                                return _buildShiftCard(droppedShifts[index], false);
+                              },
+                            ),
+                          )
+                        else
+                          const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text('You haven\'t dropped any shifts yet.'),
+                          ),
                       ],
                     );
                   },

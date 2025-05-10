@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:ridemate/Domain/Cart.dart';
 
 class ServiceController {
@@ -75,100 +77,112 @@ class ServiceController {
     print("Search button pressed");
   }
 
-  // // create/update cart for product
-  // Future<void> addToCart({
-  //   required String workshopId,
-  //   String? productId,
-  //   int quantity = 1,
-  //   double? productPrice,
-  //   String? serviceId,
-  //   double? servicePrice,
-  // }) async {
-  //   try {
-  //     String userId = _auth.currentUser?.uid ?? '';
-  //     if (userId.isEmpty) {
-  //       print("User not logged in");
-  //       return;
-  //     }
-  //
-  //     CollectionReference cartCollection = _firestore.collection('Cart');
-  //
-  //     // Check if a cart exists for this user and workshop with "In Cart" or "Arrive" status
-  //     QuerySnapshot existingCartQuery = await cartCollection
-  //         .where('Owner', isEqualTo: userId)
-  //         .where('Workshop', isEqualTo: workshopId)
-  //         .where('Status', whereIn: ["In Cart", "Arrive"])
-  //         .limit(1)
-  //         .get();
-  //
-  //     if (existingCartQuery.docs.isNotEmpty) {
-  //       // Update existing cart
-  //       DocumentSnapshot cartDoc = existingCartQuery.docs.first;
-  //       Map<String, dynamic> existingData = cartDoc.data() as Map<String, dynamic>;
-  //
-  //       // Get current products and services
-  //       Map<String, int> productQuantities = Map<String, int>.from(existingData['Products'] ?? {});
-  //       List<String> serviceIds = List<String>.from(existingData['Services'] ?? []);
-  //
-  //       double newTotalPrice = existingData['Price'] ?? 0;
-  //
-  //       if (productId != null && productPrice != null) {
-  //         // Update product quantity
-  //         productQuantities.update(productId, (existingQty) => existingQty + quantity, ifAbsent: () => quantity);
-  //         newTotalPrice += productPrice * quantity;
-  //       }
-  //
-  //       if (serviceId != null && servicePrice != null) {
-  //         // Add service if not already in the list
-  //         if (!serviceIds.contains(serviceId)) {
-  //           serviceIds.add(serviceId);
-  //           newTotalPrice += servicePrice;
-  //         }
-  //       }
-  //
-  //       await cartDoc.reference.update({
-  //         'Products': productQuantities,
-  //         'Services': serviceIds,
-  //         'Price': newTotalPrice,
-  //       });
-  //
-  //       print("Cart updated successfully");
-  //     } else {
-  //       // Create a new cart
-  //       DocumentReference newCartRef = cartCollection.doc();
-  //
-  //       Map<String, int> productQuantities = {};
-  //       List<String> serviceIds = [];
-  //
-  //       double totalPrice = 0;
-  //
-  //       if (productId != null && productPrice != null) {
-  //         productQuantities[productId] = quantity;
-  //         totalPrice += productPrice * quantity;
-  //       }
-  //
-  //       if (serviceId != null && servicePrice != null) {
-  //         serviceIds.add(serviceId);
-  //         totalPrice += servicePrice;
-  //       }
-  //
-  //       Cart newCart = Cart(
-  //         id: newCartRef.id,
-  //         userId: userId,
-  //         workshopId: workshopId,
-  //         productQuantities: productQuantities,
-  //         serviceIds: serviceIds,
-  //         status: "In Cart",
-  //         totalPrice: totalPrice,
-  //       );
-  //
-  //       await newCartRef.set(newCart.toMap());
-  //       print("New cart created successfully");
-  //     }
-  //   } catch (e) {
-  //     print("Error adding to cart: $e");
-  //   }
-  // }
+  // initiate map
+  Future<List<Map<String, dynamic>>> initializeMap(LatLng userLocation) async {
+    final Distance distance = Distance(); // ✅ Add this line
+    final allWorkshops = await getWorkshops();
+    final sortedWorkshops = allWorkshops.map((workshop) {
+      final LatLng loc = LatLng(
+        double.parse(workshop['Latitude'].toString()),
+        double.parse(workshop['Longitude'].toString()),
+      );
+      final double km = distance.as(LengthUnit.Kilometer, userLocation, loc);
+      return {...workshop, 'Distance': km};
+    }).toList();
+
+    sortedWorkshops.sort((a, b) =>
+        (a['Distance'] as double).compareTo(b['Distance'] as double));
+
+    final nearby = sortedWorkshops.where((w) => w['Distance'] <= 20.0).toList();
+    return nearby.isNotEmpty ? nearby : sortedWorkshops;
+  }
+
+  // get current user location
+  Future<LatLng?> getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print("Location services are disabled.");
+        return null;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print("Location permission denied.");
+          return null;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print("Location permission permanently denied.");
+        return null;
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      print("Current user location: (${position.latitude}, ${position.longitude})");
+      return LatLng(position.latitude, position.longitude);
+    } catch (e) {
+      print("Error getting location: $e");
+      return null;
+    }
+  }
+
+  // create emergency
+  Future<void> requestHelp(LatLng userLocation, String helpDescription) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      print("User not logged in.");
+      return;
+    }
+
+    final helpRequestData = {
+      'Location': {
+        'Latitude': userLocation.latitude,
+        'Longitude': userLocation.longitude,
+      },
+      'Status': 'Pending',
+      'Owner': currentUser.uid,
+      'Date': DateTime.now(),
+      'Description': helpDescription,
+    };
+
+    await FirebaseFirestore.instance.collection('Emergency').add(helpRequestData);
+    print("Help request sent!");
+  }
+
+  // display emergency that is pending
+  Stream<List<Map<String, dynamic>>> getHelpRequestsStream() {
+    return FirebaseFirestore.instance
+        .collection('Emergency')
+        .where('Status', isEqualTo: 'Pending')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'Latitude': data['Location']['Latitude'],
+          'Longitude': data['Location']['Longitude'],
+          'Owner': data['Owner'],
+          'Date': data['Date'],
+          'Description': data['Description'],
+          'Status': data['Status'],
+        };
+      }).toList();
+    });
+  }
+
+  // update emergency status to solve
+  Future<void> markHelpAsSolved(String requestId) async {
+    await FirebaseFirestore.instance.collection('Emergency').doc(requestId).update({
+      'Status': 'Solved',
+    });
+    print("Help request marked as solved!");
+  }
+
 
 
 }

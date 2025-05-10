@@ -73,6 +73,7 @@ class AssignController {
         for (var applicant in applicants) {
           String status = applicant['Status'] ?? '';
           String applicantId = applicant['id'] ?? '';
+          double rated = (applicant["Mechanic's Rate"] ?? 0.0).toDouble();
           print("Checking shift: $shiftId, Date: $shiftDate, Applicants: $applicants");
 
           if (shiftDate == today && status == 'Accepted') {
@@ -82,7 +83,9 @@ class AssignController {
           } else if (DateTime.parse(shiftDate).isBefore(now.add(Duration(days: 1))) && status == 'Pending') {
             pendingPayment[applicantId] = await fetchMechanicDetails(workshopId, applicantId, shiftId);
           } else if (DateTime.parse(shiftDate).isBefore(now.add(Duration(days: 1))) && status == 'Completed') {
-            completedPayment[applicantId] = await fetchMechanicDetails(workshopId, applicantId, shiftId);
+            if (rated == 0.0){
+              completedPayment[applicantId] = await fetchMechanicDetails(workshopId, applicantId, shiftId);
+            }
           }
         }
       }
@@ -218,8 +221,8 @@ class AssignController {
     }
   }
 
-  Future<void> updateApplicantStatus(String workshopId, String shiftId, String applicantId, String newStatus) async {
-    print("Updating status to $newStatus for applicant $applicantId");
+  Future<void> updateApplicantStatus(String workshopId, String shiftId, String applicantId, String comment) async {
+    print("Updating status for applicant $applicantId");
 
     var shiftDocRef = _firestore
         .collection('Workshop')
@@ -234,7 +237,7 @@ class AssignController {
 
       applicants = applicants.map((applicant) {
         if (applicant['id'] == applicantId) {
-          return {...applicant, 'Status': newStatus};
+          return {...applicant, 'Status': 'Rejected', 'Comment': comment};
         }
         return applicant;
       }).toList();
@@ -248,7 +251,6 @@ class AssignController {
         'Availability': availabilityStatus,
       });
 
-      print("Applicant status updated to $newStatus.");
     }
   }
 
@@ -343,7 +345,19 @@ class AssignController {
 
         applicants = applicants.map((applicant) {
           if (applicant['id'] == mechanicId) {
-            return {...applicant, 'Status': 'Done'};
+            double rated = (applicant["Workshop's Rate"] ?? 0.0).toDouble();
+            if(rated == 0.0){
+              return {
+                ...applicant,
+                "Mechanic's Rate": finalRating,
+              };
+            } else {
+              return {
+                ...applicant,
+                'Status': 'Done',
+                "Mechanic's Rate": finalRating,
+              };
+            }
           }
           return applicant;
         }).toList();

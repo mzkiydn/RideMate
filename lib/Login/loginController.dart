@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:ridemate/Login/encryption_helper.dart';
 
 class LoginController {
   final TextEditingController usernameController = TextEditingController();
@@ -12,61 +13,69 @@ class LoginController {
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter username and password')),
+        const SnackBar(content: Text('Please fill in all fields')),
       );
       return;
     }
 
     try {
-      // Fetch email linked to the username from Firestore
-      String? email = await _getEmailFromUsername(username);
-      if (email == null) {
+      // Step 1: Get the user from Firestore using username
+      QuerySnapshot userQuery = await FirebaseFirestore.instance
+          .collection('User')
+          .where('Username', isEqualTo: username)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid username or password')),
+          const SnackBar(content: Text('Username not found')),
         );
         return;
       }
 
-      print('Email found: $email');  // Debugging log
+      final userDoc = userQuery.docs.first;
+      final userData = userDoc.data() as Map<String, dynamic>;
+      final storedEmail = userData['Email'];
+      final encryptedPassword = userData['Password'];
+      final firestoreUserId = userDoc.id;
 
-      // Sign in using Firebase Authentication
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
-
-      print('User signed in: ${userCredential.user?.email}'); // Debugging log
-
-      if (userCredential.user != null) {
-        // Now fetch user data from Firestore (Check user document)
-        String userId = userCredential.user!.uid;
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('User')
-            .doc(userId)
-            .get();
-
-        // Ensure the document exists and handle the response
-        if (userDoc.exists) {
-          var userData = userDoc.data() as Map<String, dynamic>;
-          print('User data: $userData');  // Debugging log
-
-          // Validate the data structure before using it
-          if (userData.containsKey('User ID')) {
-            // Proceed to the next screen
-            Navigator.pushNamed(context, '/feed');
-          } else {
-            throw Exception('Invalid user data format');
-          }
-        } else {
-          throw Exception('User document not found');
-        }
-      } else {
+      // Step 2: Decrypt and validate password manually
+      final decryptedPassword = EncryptionHelper.decryptText(encryptedPassword);
+      print("Password: $decryptedPassword");
+      if (decryptedPassword != password) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login failed')),
+          const SnackBar(content: Text('Incorrect password')),
         );
+        return;
       }
+
+      // Step 3: Authenticate using Firebase Auth
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: storedEmail, password: password);
+
+      final firebaseUid = userCredential.user?.uid;
+
+      // Step 4: Sync Firestore UID with Firebase UID
+      if (firebaseUid != userData['User ID']) {
+        await FirebaseFirestore.instance
+            .collection('User')
+            .doc(firestoreUserId)
+            .update({'User ID': firebaseUid});
+      }
+
+      // Step 5: Navigate to dashboard
+      Navigator.pushNamed(context, '/feed');
+    } on FirebaseAuthException catch (e) {
+      String message = 'Login failed.';
+      if (e.code == 'user-not-found') {
+        message = 'No user found with this email.';
+      } else if (e.code == 'wrong-password') {
+        message = 'Incorrect password.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      print('Login failed: $e');  // Debugging log
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${e.toString()}')),
+        SnackBar(content: Text('Login error: ${e.toString()}')),
       );
     }
   }
@@ -82,8 +91,7 @@ class LoginController {
       if (snapshot.docs.isNotEmpty) {
         var userDoc = snapshot.docs.first.data();
         if (userDoc is Map<String, dynamic>) {
-          print('User data: $userDoc');  // Debugging log
-          return userDoc['Email']; // Ensure you're accessing 'Email' correctly
+          return userDoc['Email'];
         }
       }
     } catch (e) {
@@ -92,7 +100,6 @@ class LoginController {
     return null;
   }
 
-  // Function to check if the user exists in Firebase Authentication
   Future<void> checkIfUserExists(String email) async {
     try {
       List<String> signInMethods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);

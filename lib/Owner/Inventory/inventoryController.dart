@@ -174,7 +174,7 @@ class InventoryController {
   }
 
   // Add a new product to the user's workshop
-  Future<void> addProduct(String name, String description, double price, int stock, bool isAvailable) async {
+  Future<void> addProduct(String name, String description, double price, int stock, bool isAvailable, String? motorcycle) async {
     try {
       String? workshopId = await _getWorkshopId();
       if (workshopId == null) return;
@@ -190,7 +190,7 @@ class InventoryController {
         'Price': price,
         'Stock': stock,
         'Availability': isAvailable,
-        'Order': 0, // Initialize as 0
+        'Motorcycle': motorcycle,
       });
 
       print('Product added successfully with ID: ${docRef.id}');
@@ -255,7 +255,7 @@ class InventoryController {
   }
 
   // Update a product in the user's workshop
-  Future<void> updateProduct(String productId, String name, String description, double price, int stock, bool isAvailable) async {
+  Future<void> updateProduct(String productId, String name, String description, double price, int stock, bool isAvailable, String? motorcycle) async {
     try {
       String? workshopId = await _getWorkshopId();
       if (workshopId == null) return;
@@ -271,6 +271,7 @@ class InventoryController {
         'Price': price,
         'Stock': stock,
         'Availability': isAvailable,
+        'Motorcycle': motorcycle,
       });
 
       print('Product updated successfully');

@@ -31,6 +31,7 @@ class _AddFeedState extends State<AddFeed> {
     super.initState();
     _getCurrentUser();
   }
+
   Future<void> _getCurrentUser() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -89,6 +90,8 @@ class _AddFeedState extends State<AddFeed> {
       contentText: _contentController.text,
       mediaUrl: mediaUrl, // Path for selected media
       mediaType: mediaType, // Either "None" or "Image"
+      likeCount: 0,
+      commentCount: 0,
     );
 
     try {

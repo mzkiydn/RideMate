@@ -29,62 +29,139 @@ class _InventoryState extends State<Inventory> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('What do you want to add?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showInventoryDialog(); // Show Inventory or Shift selection
-                },
-                child: const Text('Inventory'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(
-                    context,
-                    '/shift/detail',
-                    arguments: {'shiftId': null}, // Navigate to DetailShift for adding a new shift
-                  );
-                },
-                child: const Text('Shift'),
-              ),
-            ],
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12), // Rounded corners
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0), // Padding inside the dialog
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'What do you want to add?',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Inline buttons with equal size
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Inventory Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showInventoryDialog(); // Show Inventory or Shift selection
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14), // Button padding
+                        ),
+                        child: const Text('Inventory'),
+                      ),
+                    ),
+                    const SizedBox(width: 10), // Space between buttons
+                    // Shift Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(
+                            context,
+                            '/shift/detail',
+                            arguments: {'shiftId': null}, // Navigate to DetailShift
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14), // Button padding
+                        ),
+                        child: const Text('Shift'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-
-  // Function to show the dialog for Inventory type selection
+// Function to show the dialog for Inventory type selection
   void _showInventoryDialog() {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('What type of inventory do you want to add?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _navigateToDetail(true); // Add product
-                },
-                child: const Text('Product'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _navigateToDetail(false); // Add service
-                },
-                child: const Text('Service'),
-              ),
-            ],
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12), // Rounded corners
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0), // Padding inside the dialog
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'What type of inventory do you want to add?',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Inline buttons with equal size
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Product Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _navigateToDetail(true); // Add product
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14), // Button padding
+                        ),
+                        child: const Text('Product'),
+                      ),
+                    ),
+                    const SizedBox(width: 10), // Space between buttons
+                    // Service Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _navigateToDetail(false); // Add service
+                        },
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14), // Button padding
+                        ),
+                        child: const Text('Service'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },

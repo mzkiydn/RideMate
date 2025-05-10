@@ -6,6 +6,8 @@ class Feed {
   final String contentText;
   final String? mediaUrl; // Can store image or video URL (optional)
   final String mediaType; // Either "none", "image", or "video"
+  final int likeCount;
+  final int commentCount;
 
   Feed({
     required this.id,
@@ -15,6 +17,8 @@ class Feed {
     required this.contentText,
     this.mediaUrl,
     this.mediaType = 'None', // Default: no media
+    this.likeCount = 0,
+    this.commentCount = 0,
   });
 
   // Convert a Feed object to JSON
@@ -27,6 +31,8 @@ class Feed {
       'Content': contentText,
       'URL': mediaUrl,
       'Media Type': mediaType,
+      'Like Count': likeCount,
+      'Comment Count': commentCount,
     };
   }
 
@@ -40,6 +46,8 @@ class Feed {
       contentText: json['Content'] as String,
       mediaUrl: json['URL'] as String?,
       mediaType: json['Media Type'] as String,
+      likeCount: json['Like Count'] as int,
+      commentCount: json['Comment Count'] as int,
     );
   }
 }

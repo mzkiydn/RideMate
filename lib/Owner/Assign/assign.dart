@@ -285,25 +285,64 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: Text('Approve Application'),
-          content: Text('Do you want to accept or reject this application?'),
+          title: const Text('Approve Application'),
+          content: const Text('Do you want to accept or reject this application?'),
           actions: [
             TextButton(
-              child: Text('Reject', style: TextStyle(color: Colors.red)),
+              child: const Text('Reject', style: TextStyle(color: Colors.red)),
               onPressed: () async {
-                Navigator.of(dialogContext).pop();
-                await controller.updateApplicantStatus(workshopId, shiftId, applicantId, 'Rejected');
+                // Open comment input dialog
+                String? comment = await showDialog<String>(
+                  context: dialogContext,
+                  builder: (BuildContext context) {
+                    String tempComment = '';
+                    return AlertDialog(
+                      title: const Text('Rejection Comment'),
+                      content: TextField(
+                        decoration: const InputDecoration(hintText: 'Enter reason for rejection'),
+                        onChanged: (value) {
+                          tempComment = value;
+                        },
+                      ),
+                      actions: [
+                        TextButton(
+                          child: const Text('Cancel'),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        TextButton(
+                          child: const Text('Submit'),
+                          onPressed: () => Navigator.of(context).pop(tempComment),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (comment != null && comment.trim().isNotEmpty) {
+                  Navigator.of(dialogContext).pop();
+                  await controller.updateApplicantStatus(
+                    workshopId,
+                    shiftId,
+                    applicantId,
+                    comment.trim(), // <-- send comment to backend
+                  );
+                }
               },
             ),
             ElevatedButton(
-              child: Text('Accept'),
+              child: const Text('Accept'),
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
-                await controller.updateApplicantStatus(workshopId, shiftId, applicantId, 'Accepted');
+                await controller.approveApplicant(
+                  workshopId,
+                  shiftId,
+                  applicantId,
+                );
               },
             ),
           ],
         );
+
       },
     );
   }

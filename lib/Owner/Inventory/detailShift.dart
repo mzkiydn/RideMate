@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ridemate/Owner/Inventory/inventoryController.dart';
+import 'package:ridemate/Template/masterScaffold.dart';
 
 class DetailShift extends StatefulWidget {
   final String? shiftId;
@@ -149,22 +150,35 @@ class _DetailShiftState extends State<DetailShift> {
     }
   }
 
+  // Restrict input to numeric only (int or double)
+  void _onRateChanged(String value) {
+    if (value.isNotEmpty && double.tryParse(value) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid number for salary rate")),
+      );
+    }
+  }
+
+  void _onVacancyChanged(String value) {
+    if (value.isNotEmpty && int.tryParse(value) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid number for vacancy")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_pageTitle),
-        actions: [
-          if (widget.shiftId != null)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: _deleteShift,
-            ),
-        ],
+    return MasterScaffold(
+      customBarTitle: _pageTitle,
+      leftCustomBarAction: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             DropdownButtonFormField<String>(
               value: _selectedDay,
@@ -174,6 +188,7 @@ class _DetailShiftState extends State<DetailShift> {
               }).toList(),
               onChanged: (value) => setState(() => _selectedDay = value!),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _dateController,
               readOnly: true,
@@ -183,8 +198,12 @@ class _DetailShiftState extends State<DetailShift> {
                   icon: const Icon(Icons.calendar_today),
                   onPressed: _pickDate,
                 ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _startTimeController,
               readOnly: true,
@@ -194,8 +213,12 @@ class _DetailShiftState extends State<DetailShift> {
                   icon: const Icon(Icons.access_time),
                   onPressed: () => _pickTime(true),
                 ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _endTimeController,
               readOnly: true,
@@ -205,34 +228,83 @@ class _DetailShiftState extends State<DetailShift> {
                   icon: const Icon(Icons.access_time),
                   onPressed: () => _pickTime(false),
                 ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _rateController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Rate per Hour',
                 prefixText: 'RM ',
                 suffixText: ' / Hour',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               keyboardType: TextInputType.number,
+              onChanged: _onRateChanged,
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _totalVacancyController,
-              decoration: const InputDecoration(labelText: 'Total Vacancies'),
+              decoration: InputDecoration(
+                labelText: 'Total Vacancies',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               keyboardType: TextInputType.number,
+              onChanged: _onVacancyChanged,
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _jobScopeController,
-              decoration: const InputDecoration(labelText: 'Job Scope'),
+              decoration: InputDecoration(
+                labelText: 'Job Scope',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _saveShift,
-              child: Text(widget.shiftId == null ? 'Add Shift' : 'Save'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(
+                  width: 140,
+                  child: ElevatedButton(
+                    onPressed: _saveShift,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(widget.shiftId == null ? 'Add Shift' : 'Save'),
+                  ),
+                ),
+                if (widget.shiftId != null)
+                  SizedBox(
+                    width: 140,
+                    child: ElevatedButton(
+                      onPressed: _deleteShift,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Delete Shift'),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
-      ),
+      ), currentIndex: 1,
     );
   }
 }

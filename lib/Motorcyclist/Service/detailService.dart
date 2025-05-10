@@ -57,31 +57,38 @@ class _DetailServiceState extends State<DetailService> {
           padding: const EdgeInsets.all(8.0),
           child: Card(
             elevation: 3,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Service details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          service['Name'] ?? 'No name',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          "Price: RM ${service['Price'] ?? 'N/A'}",
-                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                        ),
-                      ],
+                  // Service Name (Title)
+                  Text(
+                    service['Name'] ?? 'No name',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Description and Price inline
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          service['Description'] ?? 'No description',
+                          style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "RM ${service['Price']?.toStringAsFixed(2) ?? 'N/A'}",
+                        style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                      ),
+                    ],
                   ),
                 ],
               ),

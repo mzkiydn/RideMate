@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:ridemate/Chat/chat.dart';
 import 'package:ridemate/Login/login.dart';
 import 'package:ridemate/Login/register.dart';
 import 'package:ridemate/Feed/feedList.dart';
 import 'package:ridemate/Feed/addFeed.dart';
 import 'package:ridemate/Mechanic/Shift/detailShift.dart';
 import 'package:ridemate/Mechanic/Work/work.dart';
+import 'package:ridemate/Mechanic/Work/workDetail.dart';
+import 'package:ridemate/Motorcyclist/Market/detailMarket.dart';
+import 'package:ridemate/Motorcyclist/Market/market.dart';
+import 'package:ridemate/Motorcyclist/Market/marketView.dart';
 import 'package:ridemate/Motorcyclist/Service/detailProduct.dart';
 import 'package:ridemate/Motorcyclist/Service/service.dart';
-import 'package:ridemate/Motorcyclist/Progress/progress.dart';
 import 'package:ridemate/Mechanic/Shift/shift.dart';
-// import 'package:ridemate/Mechanic/Work/work.dart';
-import 'package:ridemate/Chat/personal.dart';
 import 'package:ridemate/Chat/chatDetail.dart';
 import 'package:ridemate/Owner/Assign/assign.dart';
 import 'package:ridemate/Owner/Inventory/detailInventory.dart';
@@ -19,11 +21,8 @@ import 'package:ridemate/Owner/Inventory/inventory.dart';
 import 'package:ridemate/Owner/Workshop/workshop.dart';
 import 'package:ridemate/Owner/Workshop/workshopDetail.dart';
 import 'package:ridemate/Profile/profile.dart';
-import 'package:ridemate/Profile/profileController.dart';
-import 'package:ridemate/Owner/Inventory/inventory.dart';
+import 'package:ridemate/Profile/profileUpdate.dart';
 
-import '../Mechanic/Shift/shift.dart';
-import 'package:ridemate/Motorcyclist/Cart/cart.dart';
 
 class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -48,7 +47,7 @@ class AppRoutes {
         );
       case '/inventory':
         return MaterialPageRoute(builder: (context) => const Inventory());
-      case '/inventory/detail': // Add this route for DetailInventory
+      case '/inventory/detail':
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
           builder: (context) => DetailInventory(
@@ -61,8 +60,21 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (context) => DetailShift(shiftId: args?['shiftId']),
         );
-      case '/progress':
-        return MaterialPageRoute(builder: (context) => const Progress());
+      case '/market':
+        return MaterialPageRoute(builder: (context) => const Market());
+      case '/market/detail':
+        final args = settings.arguments as Map<dynamic, dynamic>?;
+        return MaterialPageRoute(
+          builder: (context) => MarketDetail(marketId: args?['marketId']),
+        );
+      case '/market/view':
+        final args = settings.arguments as Map<dynamic, dynamic>?;
+        return MaterialPageRoute(
+          builder: (context) => MarketView(
+            marketId: args?['marketId'],
+            isOwner: args != null && args['isOwner'] == true, // Check if 'isOwner' exists and is true
+          ),
+        );
       case '/shift':
         return MaterialPageRoute(builder: (context) => const Shift());
       case '/shiftDetail':
@@ -76,27 +88,39 @@ class AppRoutes {
         return MaterialPageRoute(builder: (context) => Assign());
     case '/work':
         return MaterialPageRoute(builder: (context) => Work());
-    case '/cart':
-        return MaterialPageRoute(builder: (context) => Cart());
-      case '/chat/personal':
-        return MaterialPageRoute(builder: (context) => const Personal());
+      case '/workDetail':
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (context) => WorkDetail(shiftId: args?['shiftId']),
+        );
+      case '/chat':
+        return MaterialPageRoute(builder: (context) => Chat());
+      case '/chat/detail':
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (context) => ChatDetail(
+            otherUserId: args?['otherUserId'],  // Get the user ID passed in arguments, default to empty string if not available
+          ),
+        );
+      // case '/cart':
+      //   return MaterialPageRoute(builder: (context) => Cart());
+      // case '/chat/personal':
+      //   return MaterialPageRoute(builder: (context) => const Personal());
       case '/profile':
         return MaterialPageRoute(
           builder: (context) => const Profile(), // No controller parameter needed
         );
-    // case '/inventory':
-      //   return MaterialPageRoute(builder: (context) => const Inventory());
-      case '/chat/personal/name':
-        final args = settings.arguments as Map<String, dynamic>;
-        return MaterialPageRoute(
-          builder: (context) => ChatDetail(name: args['name']),
-        );
+      // case '/chat/personal/name':
+      //   final args = settings.arguments as Map<String, dynamic>;
+      //   return MaterialPageRoute(
+      //     builder: (context) => ChatDetail(name: args['name']),
+      //   );
 
         // Example dynamic navigation based on option name
       case '/account':
-        return MaterialPageRoute(builder: (context) => const PlaceholderPage(title: 'Account'));
-      case '/motorcycle':
-        return MaterialPageRoute(builder: (context) => const PlaceholderPage(title: 'Motorcycle'));
+        return MaterialPageRoute(builder: (context) => ProfileUpdate());
+      // case '/motorcycle':
+      //   return MaterialPageRoute(builder: (context) => const PlaceholderPage(title: 'Motorcycle'));
       case '/workshop':
         return MaterialPageRoute(builder: (context) => Workshop());
       case '/workshop/detail':

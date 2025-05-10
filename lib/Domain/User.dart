@@ -28,16 +28,16 @@ class User {
   /// Factory constructor to create a User object from a JSON map.
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      userID: json['User ID'],
-      password: json['Password'],
+      userID: json['User ID'] ?? '',
+      password: json['Password'] ?? '',
       address: json['Address'],
       birthDate: json['Birth Date'],
-      email: json['Email'],
-      name: json['Name'],
+      email: json['Email'] ?? '',
+      name: json['Name'] ?? '',
       pNum: json['Phone Number'],
       userType: json['Type'],
       rating: json['Rating'] != null ? (json['Rating'] as num).toDouble() : null,
-      username: json['Username'],
+      username: json['Username'] ?? '',
     );
   }
 

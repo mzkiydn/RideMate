@@ -114,17 +114,7 @@ class _DetailProductState extends State<DetailProduct> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Row(
-                        //   children: [
-                        //     Icon(Icons.location_on, color: Colors.grey.shade600),
-                        //     const SizedBox(width: 4),
-                        //     Text(
-                        //       workshop?['Contact'] ?? 'No address available',
-                        //       style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                        //     ),
-                        //   ],
-                        // ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 10),
                         Row(
                           children: [
                             Icon(Icons.access_time_sharp, color: Colors.grey.shade600),
@@ -177,46 +167,37 @@ class _DetailProductState extends State<DetailProduct> {
                         padding: const EdgeInsets.all(8.0),
                         child: Card(
                           elevation: 3,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: Row(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                // Product details
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product['Name'] ?? 'No name',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        "Price: RM ${product['Price'] ?? 'N/A'}",
-                                        style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                                      ),
-                                    ],
+                                // Product Name (Title)
+                                Text(
+                                  product['Name'] ?? 'No name',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
                                   ),
                                 ),
-                                // Quantity and button
+                                const SizedBox(height: 8),
+                                // Info Row: Motorcycle, Quantity, Price
                                 Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    // Quantity
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Quantity: ${product['Stock'] ?? 'N/A'}",
-                                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                                        ),
-                                      ],
+                                    Text(
+                                      "Motorcycle: ${product['Motorcycle'] ?? 'N/A'}",
+                                      style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
                                     ),
-                                    SizedBox(width: 16),
+                                    Text(
+                                      "Qty: ${product['Stock'] ?? 'N/A'}",
+                                      style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                                    ),
+                                    Text(
+                                      "RM ${product['Price']?.toStringAsFixed(2) ?? 'N/A'}",
+                                      style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                                    ),
                                   ],
                                 ),
                               ],

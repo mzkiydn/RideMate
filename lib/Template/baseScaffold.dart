@@ -34,7 +34,7 @@ class BaseScaffold extends StatelessWidget {
         break;
       case 2:
         if (userType == 'Motorcyclist') {
-          Navigator.pushNamed(context, '/progress');
+          Navigator.pushNamed(context, '/market');
         } else if (userType == 'Workshop Owner') {
           Navigator.pushNamed(context, '/assign');
         } else {
@@ -141,11 +141,11 @@ class BaseScaffold extends StatelessWidget {
       ),
       BottomNavigationBarItem(
         icon: userType == 'Motorcyclist'
-            ? const Icon(Icons.motorcycle)
+            ? const Icon(Icons.shopping_bag_outlined)
             : userType == 'Workshop Owner'
             ? const Icon(Icons.task)
             : const Icon(Icons.work),
-        label: userType == 'Motorcyclist' ? 'Progress' : userType == 'Workshop Owner' ? 'Assign' : 'Work',
+        label: userType == 'Motorcyclist' ? 'Market' : userType == 'Workshop Owner' ? 'Assign' : 'Work',
       ),
       const BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
       const BottomNavigationBarItem(icon: Icon(Icons.account_circle), label: 'Profile'),

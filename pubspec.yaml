@@ -50,6 +50,9 @@ dependencies:
   flutter_map: ^4.0.0 #outdated
   latlong2: ^0.8.1 #outdated
   geolocator: ^12.0.0
+  encrypt: ^5.0.1
+  url_launcher: ^6.3.1
+  permission_handler: ^11.3.1
 
 
 

@@ -1,126 +1,154 @@
-import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChatController {
-  // List to hold personal chat data
-  List<Map<String, dynamic>> _personalChatList = [
-    {
-      "name": "Alice",
-      "message": "Hey! How are you?",
-      "time": "10:30 AM",
-      "isRead": false,
-      "type": "text", // Add type field to differentiate between text and images
-    },
-    {
-      "name": "Bob",
-      "message": "See you later!",
-      "time": "11:00 AM",
-      "isRead": true,
-      "type": "text",
-    },
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // List to hold group chat data
-  List<Map<String, dynamic>> _groupChatList = [
-    {
-      "name": "RXZ Members",
-      "message": "Hey! How are you?",
-      "time": "10:30 AM",
-      "isRead": false,
-      "type": "text",
-    },
-  ];
+  /// Get list of chat documents where the current user/workshop is a participant
+  Future<List<Map<String, dynamic>>> getChats(String currentId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('Chat')
+          .where('Participants', arrayContains: currentId)
+          .orderBy('Last Timestamp', descending: true)
+          .get();
 
-  // List to hold system chat data
-  List<Map<String, dynamic>> _systemChatList = [
-    {
-      "name": "Motorsport",
-      "message": "Hey! How are you?",
-      "time": "10:30 AM",
-      "isRead": false,
-      "type": "text",
-    },
-  ];
-
-  // Getter for personal chats
-  List<Map<String, dynamic>> get personalChatList => _personalChatList;
-
-  // Getter for group chats
-  List<Map<String, dynamic>> get groupChatList => _groupChatList;
-
-  // Getter for system chats
-  List<Map<String, dynamic>> get systemChatList => _systemChatList;
-
-  // Getter for all messages based on chat name
-  List<Map<String, dynamic>> getMessages(String chatName) {
-    // Search for personal, group, or system chat based on the name
-    if (_personalChatList.any((chat) => chat['name'] == chatName)) {
-      return _personalChatList.where((chat) => chat['name'] == chatName).toList();
-    } else if (_groupChatList.any((chat) => chat['name'] == chatName)) {
-      return _groupChatList.where((chat) => chat['name'] == chatName).toList();
-    } else {
-      return _systemChatList.where((chat) => chat['name'] == chatName).toList();
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['chatId'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      print('Error fetching chats: $e');
+      return [];
     }
   }
 
+  /// Search users and workshops by name
+  Future<List<Map<String, dynamic>>> searchUsersAndWorkshops(String query) async {
+    List<Map<String, dynamic>> results = [];
+    final user = _auth.currentUser;
+    String? currentUserId = user!.uid;
 
-  // Method to mark a chat as read
-  void markAsRead(int index, {bool isGroup = false, bool isSystem = false}) {
-    List<Map<String, dynamic>> chatList;
+    // Search users by unique Username
+    final userSnapshot = await _firestore
+        .collection('User')
+        .where('Username', isGreaterThanOrEqualTo: query)
+        .where('Username', isLessThanOrEqualTo: '$query\uf8ff')
+        .get();
 
-    if (isSystem) {
-      chatList = _systemChatList;
-    } else if (isGroup) {
-      chatList = _groupChatList;
-    } else {
-      chatList = _personalChatList;
+    for (var doc in userSnapshot.docs) {
+      final data = doc.data();
+      if (doc.id == currentUserId) continue; // exclude self
+      data['Type'] = 'User';
+      data['Title'] = data['Name'];
+      data['id'] = 'User.${doc.id}';
+      results.add(data);
     }
 
-    if (!chatList[index]["isRead"]) {
-      chatList[index]["isRead"] = true;
+    final workshopSnapshot = await _firestore
+        .collection('Workshop')
+        .where('Name', isGreaterThanOrEqualTo: query)
+        .where('Name', isLessThanOrEqualTo: '$query\uf8ff')
+        .get();
+
+    for (var doc in workshopSnapshot.docs) {
+      final data = doc.data();
+      if (data['Owner'] == currentUserId) continue; // exclude self
+      results.add({
+        'Type': 'Workshop',
+        'Title': data['Name'],
+        'id': 'Workshop.${data['Owner']}'
+      });
     }
+
+    return results;
   }
 
-  // Method to add a new personal message
-  void addNewPersonalMessage(String name, String message, String time, String type) {
-    _personalChatList.add({
-      "name": name,
-      "message": message,
-      "time": time,
-      "isRead": false,
-      "type": type, // Add type to specify if it's text or image
+  /// Get messages for a specific chat ID
+  Stream<List<Map<String, dynamic>>> getMessages(String chatId) {
+    return _firestore
+        .collection('Chat')
+        .doc(chatId)
+        .collection('Messages')
+        .orderBy('Timestamp', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+  }
+
+  // fetch other user data
+  Future<Map<String, String>> getDisplayInfo(String userId) async {
+    final workshopSnap = await FirebaseFirestore.instance
+        .collection('Workshop')
+        .where('Owner', isEqualTo: userId)
+        .limit(1)
+        .get();
+
+    if (workshopSnap.docs.isNotEmpty) {
+      final userSnap = await FirebaseFirestore.instance
+          .collection('User')
+          .doc(userId)
+          .get();
+      final user = userSnap.data()!;
+
+      final data = workshopSnap.docs.first.data();
+      return {
+        'Name': data['Name'],
+        'Username': user['Username'], // optional: static label
+      };
+    }
+
+    final userSnap = await FirebaseFirestore.instance
+        .collection('User')
+        .doc(userId)
+        .get();
+
+    if (userSnap.exists) {
+      final data = userSnap.data()!;
+      return {
+        'Name': data['Name'],
+        'Username': data['Username'],
+      };
+    }
+
+    return {
+      'Name': 'Unknown',
+      'Username': '',
+    };
+  }
+
+  /// Send a message in a chat
+  Future<void> sendMessage({
+    required String chatId,
+    required String senderId,
+    required String message,
+    required List<String> participants,
+  }) async {
+    final now = Timestamp.now();
+
+    await _firestore.collection('Chat').doc(chatId).set({
+      'Participants': participants,
+      'Last Message': message,
+      'Last Timestamp': now,
+      'Last Sender': senderId,
+    }, SetOptions(merge: true));
+
+    await _firestore
+        .collection('Chat')
+        .doc(chatId)
+        .collection('Messages')
+        .add({
+      'Sender': senderId,
+      'Message': message,
+      'Timestamp': now,
+      'Seen': [senderId],
     });
   }
 
-  // Method to add a new group message
-  void addNewGroupMessage(String name, String message, String time, String type) {
-    _groupChatList.add({
-      "name": name,
-      "message": message,
-      "time": time,
-      "isRead": false,
-      "type": type,
-    });
-  }
-
-  // Method to add a new system message
-  void addNewSystemMessage(String name, String message, String time, String type) {
-    _systemChatList.add({
-      "name": name,
-      "message": message,
-      "time": time,
-      "isRead": false,
-      "type": type,
-    });
-  }
-
-  // Method to add an image message (shared for personal, group, and system)
-  void addImageMessage(String name, String imagePath, String time, String type) {
-    if (type == 'personal') {
-      addNewPersonalMessage(name, imagePath, time, 'image');
-    } else if (type == 'group') {
-      addNewGroupMessage(name, imagePath, time, 'image');
-    } else {
-      addNewSystemMessage(name, imagePath, time, 'image');
-    }
+  /// Generate a consistent chat ID using two user/workshop IDs
+  String generateChatId(String id1, String id2) {
+    final sorted = [id1, id2]..sort();
+    return '${sorted[0]}|${sorted[1]}';
   }
 }

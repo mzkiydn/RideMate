@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ridemate/Owner/Inventory/inventoryController.dart';
+import 'package:ridemate/Template/masterScaffold.dart';
 
 class DetailInventory extends StatefulWidget {
   final String? itemId;
@@ -22,6 +23,12 @@ class _DetailInventoryState extends State<DetailInventory> {
   final TextEditingController _stockController = TextEditingController();
   bool _isAvailable = true;
   String _pageTitle = '';
+
+  // For dropdown selection
+  String? _selectedMotorcycle;
+  // common motorcycle in Malaysia
+  final List<String> _motorcycle = ['Wave', 'EX5', 'RS150', 'RSX', 'Dash', 'Beat', 'Vario',
+    'LC135', 'Y15', 'NVX', 'Y16', 'Lagenda', 'Avantiz', 'RXZ', '125ZR'];
 
   @override
   void initState() {
@@ -50,14 +57,15 @@ class _DetailInventoryState extends State<DetailInventory> {
 
       if (item != null) {
         setState(() {
-          _nameController.text = item?['Name'] ?? ''; // Default to empty string if null
-          _descriptionController.text = item?['Description'] ?? ''; // Default to empty string if null
-          _priceController.text = (item?['Price'] ?? 0.0).toString(); // Default to 0.0 if null
+          _nameController.text = item?['Name'] ?? '';
+          _descriptionController.text = item?['Description'] ?? '';
+          _priceController.text = (item?['Price'] ?? 0.0).toString();
           if (widget.isProduct) {
-            _stockController.text = (item?['Stock'] ?? 0).toString(); // Default to 0 if null for products
+            _stockController.text = (item?['Stock'] ?? 0).toString();
           }
-          _isAvailable = item?['Availability'] ?? true; // Default to true if null
-          _pageTitle = item?['Name'] ?? 'Item Details'; // Use product/service name or 'Item Details'
+          _isAvailable = item?['Availability'] ?? true;
+          _selectedMotorcycle = item?['Motorcycle'];
+          _pageTitle = item?['Name'] ?? 'Item Details';
         });
       } else {
         setState(() {
@@ -78,13 +86,14 @@ class _DetailInventoryState extends State<DetailInventory> {
     final description = _descriptionController.text;
     final price = double.tryParse(_priceController.text) ?? 0.0;
     final stock = widget.isProduct ? (int.tryParse(_stockController.text) ?? 0) : null;
+    final motorcycle = _selectedMotorcycle;
     final isAvailable = _isAvailable;
 
     if (widget.isProduct) {
       if (widget.itemId == null) {
-        await InventoryController().addProduct(name, description, price, stock!, isAvailable);
+        await InventoryController().addProduct(name, description, price, stock!, isAvailable, motorcycle);
       } else {
-        await InventoryController().updateProduct(widget.itemId!, name, description, price, stock!, isAvailable);
+        await InventoryController().updateProduct(widget.itemId!, name, description, price, stock!, isAvailable, motorcycle);
       }
     } else {
       if (widget.itemId == null) {
@@ -133,29 +142,124 @@ class _DetailInventoryState extends State<DetailInventory> {
     }
   }
 
+  // Restrict input to numeric only (int or double)
+  void _onPriceChanged(String value) {
+    if (value.isNotEmpty && double.tryParse(value) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid number for price")),
+      );
+    }
+  }
+
+  void _onStockChanged(String value) {
+    if (value.isNotEmpty && int.tryParse(value) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid number for stock")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.itemId == null ? _pageTitle : 'Edit $_pageTitle'),
-        actions: [
-          if (widget.itemId != null)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: _deleteItem,
-            ),
-        ],
+    return MasterScaffold(
+      customBarTitle: widget.itemId == null ? _pageTitle : 'Edit $_pageTitle',
+      leftCustomBarAction: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name')),
-            TextField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Description')),
-            TextField(controller: _priceController, decoration: const InputDecoration(labelText: 'Price'), keyboardType: TextInputType.number),
-            if (widget.isProduct) ...[ // Only show stock field for product
-              TextField(controller: _stockController, decoration: const InputDecoration(labelText: 'Stock'), keyboardType: TextInputType.number),
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descriptionController,
+              decoration: InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _priceController,
+              decoration: InputDecoration(
+                labelText: 'Price',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+              onChanged: _onPriceChanged,
+              style: const TextStyle(fontSize: 16),
+            ),
+            if (widget.isProduct) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _stockController,
+                decoration: InputDecoration(
+                  labelText: 'Stock',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: _onStockChanged,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (context) {
+                      return Container(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: _motorcycle.map((category) {
+                            return ListTile(
+                              title: Text(category),
+                              onTap: () {
+                                setState(() {
+                                  _selectedMotorcycle = category;
+                                });
+                                Navigator.pop(context);
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: AbsorbPointer(
+                  child: TextField(
+                    controller: TextEditingController(text: _selectedMotorcycle),
+                    decoration: InputDecoration(
+                      labelText: 'Select Motorcycle',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
             ],
+            const SizedBox(height: 12),
             SwitchListTile(
               title: const Text('Available'),
               value: _isAvailable,
@@ -166,13 +270,42 @@ class _DetailInventoryState extends State<DetailInventory> {
               },
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _saveItem,
-              child: Text(widget.itemId == null ? 'Add' : 'Save'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(
+                  width: 140,
+                  child: ElevatedButton(
+                    onPressed: _saveItem,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(widget.itemId == null ? 'Add' : 'Save'),
+                  ),
+                ),
+                if (widget.itemId != null)
+                  SizedBox(
+                    width: 140,
+                    child: ElevatedButton(
+                      onPressed: _deleteItem,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Delete Item'),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
       ),
+      currentIndex: 1,
     );
   }
 }

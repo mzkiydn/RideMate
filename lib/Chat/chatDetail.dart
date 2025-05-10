@@ -1,154 +1,165 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ridemate/Chat/chatController.dart';
-import 'package:ridemate/Template/baseScaffold.dart';
-import 'dart:io'; // Required for File
-import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import 'package:ridemate/Template/masterScaffold.dart'; // Import provider
+import 'package:ridemate/Template/masterScaffold.dart';
 
 class ChatDetail extends StatefulWidget {
-  final String name; // Name of the person you're chatting with
+  final String otherUserId;
 
-  const ChatDetail({super.key, required this.name});
+  const ChatDetail({
+    required this.otherUserId,
+    Key? key,
+  }) : super(key: key);
 
   @override
-  _ChatDetailState createState() => _ChatDetailState();
+  State<ChatDetail> createState() => _ChatDetailState();
 }
 
 class _ChatDetailState extends State<ChatDetail> {
-  final TextEditingController _controller = TextEditingController();
-  XFile? _image; // Variable to hold the selected image
-  final ImagePicker _picker = ImagePicker();
+  final ChatController _chatController = ChatController();
+  final TextEditingController _messageController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  String? _currentUserId;
+  String? _chatId;
+  String? _displayName;
+  String? _username;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    _currentUserId = user.uid;
+    _chatId = _chatController.generateChatId(_currentUserId!, widget.otherUserId);
+
+    print(widget.otherUserId);
+
+    // 🔍 Fetch display name (from workshops or users)
+    final workshopSnapshot = await FirebaseFirestore.instance
+        .collection('Workshop')
+        .where('Owner', isEqualTo: widget.otherUserId)
+        .limit(1)
+        .get();
+
+    if (workshopSnapshot.docs.isNotEmpty) {
+      final userSnapshot = await FirebaseFirestore.instance
+          .collection('User')
+          .doc(widget.otherUserId)
+          .get();
+
+      final data = workshopSnapshot.docs.first.data();
+      final user = userSnapshot.data()!;
+
+      _displayName = data['Name'];
+      _username = user['Username'];
+
+    } else {
+      final userSnapshot = await FirebaseFirestore.instance
+          .collection('User')
+          .doc(widget.otherUserId)
+          .get();
+
+      if (userSnapshot.exists) {
+        final data = userSnapshot.data()!;
+        _displayName = data['Name'];
+        _username = data['Username'];
+      }
+    }
+
+
+    setState(() {});
+  }
+
+  void _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _chatId == null || _currentUserId == null) return;
+
+    await _chatController.sendMessage(
+      chatId: _chatId!,
+      senderId: _currentUserId!,
+      message: text,
+      participants: [_currentUserId!, widget.otherUserId],
+    );
+
+    _messageController.clear();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Get the ChatController using Provider
-    final chatController = Provider.of<ChatController>(context, listen: false);
-
-    Future<void> _pickImage() async {
-      // Allow user to pick an image from the gallery
-      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-      setState(() {
-        _image = pickedFile; // Store the selected image
-      });
-
-      // Add the selected image to the chat
-      if (_image != null) {
-        String time = TimeOfDay.now().format(context);
-        chatController.addImageMessage(widget.name, _image!.path, time, 'sent');
-      }
+    if (_chatId == null || _currentUserId == null || _displayName == null) {
+      return MasterScaffold(
+        customBarTitle: "Loading...",
+        body: Center(child: CircularProgressIndicator()), currentIndex: 3,
+      );
     }
-
-    void _sendMessage() {
-      if (_controller.text.isNotEmpty) {
-        String time = TimeOfDay.now().format(context);
-        chatController.addNewPersonalMessage(widget.name, _controller.text, time, 'text');
-        _controller.clear();
-      }
-    }
-
-
-    // Get the messages for this chat
-    List<Map<String, dynamic>> messages = chatController.getMessages(widget.name);
 
     return MasterScaffold(
-      customBarTitle: widget.name,
+      customBarTitle: '$_displayName\n@$_username',
       leftCustomBarAction: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.white),
-        onPressed: () {
-          Navigator.pop(context);
-        },
+        onPressed: () => Navigator.pop(context),
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _chatController.getMessages(_chatId!),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
 
-                // Ensure type and message exist before accessing them
-                final isSent = message['type'] != null && message['type'] == 'sent';
-
-                return Align(
-                  alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isSent ? Colors.blue.shade100 : Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Check if the message is an image
-                        if (message['type'] == 'image') // Check if the type is image
-                          Image.file(
-                            File(message['message']!), // Fixed field name from 'text' to 'message'
-                            height: 200,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          )
-                        else
-                          Text(
-                            message['message'] ?? '', // Provide a fallback for message field
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        const SizedBox(height: 4),
-                        Text(
-                          message['time'] ?? '', // Provide a fallback for time field
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
+                final messages = snapshot.data!;
+                return ListView.builder(
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = messages[index];
+                    final isMe = msg['Sender'] == _currentUserId;
+                    return Align(
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.blue[200] : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
-                    ),
-                  ),
+                        child: Text(msg['Message']),
+                      ),
+                    );
+                  },
                 );
               },
             ),
           ),
+          Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-                // Image icon
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: IconButton(
-                    icon: const Icon(Icons.image, size: 30),
-                    onPressed: _pickImage,
-                    tooltip: 'Add Image',
-                  ),
-                ),
                 Expanded(
                   child: TextField(
-                    controller: _controller,
+                    controller: _messageController,
                     decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(
-                          color: Colors.grey.shade300,
-                        ),
-                      ),
+                      hintText: "Type a message...",
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
+                  icon: Icon(Icons.send),
                   onPressed: _sendMessage,
-                ),
+                )
               ],
             ),
           ),
         ],
-      ),
-      currentIndex: 3, // Set this based on the desired initial tab
-      // showBottomNavigationBar: false,
+      ), currentIndex: 3,
     );
   }
 }

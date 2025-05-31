@@ -17,6 +17,7 @@ class _ShiftDetailState extends State<ShiftDetail> {
   Map<String, dynamic>? shiftDetails;
   bool isLoading = true;
   String? currentUserId;
+  ShiftController shiftController = ShiftController();
 
   @override
   void initState() {
@@ -25,8 +26,20 @@ class _ShiftDetailState extends State<ShiftDetail> {
     _fetchShiftDetails();
   }
 
+  bool _isToday(String? dateStr) {
+    if (dateStr == null) return false;
+    try {
+      final shiftDate = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      return shiftDate.year == now.year &&
+          shiftDate.month == now.month &&
+          shiftDate.day == now.day;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<void> _fetchShiftDetails() async {
-    ShiftController shiftController = ShiftController();
     final data = await shiftController.fetchShiftById(widget.shiftId);
 
     setState(() {
@@ -36,127 +49,28 @@ class _ShiftDetailState extends State<ShiftDetail> {
   }
 
   Future<void> _applyForShift() async {
-    if (shiftDetails == null || currentUserId == null) return;
-
-    try {
-      final shiftRef = FirebaseFirestore.instance
-          .collection('Workshop')
-          .doc(shiftDetails!['workshopId'])
-          .collection('Shifts')
-          .doc(widget.shiftId);
-
-      // Get current applicants
-      List<dynamic> applicants = List.from(shiftDetails!['Applicant'] ?? []);
-
-      // Look for a dropped applicant to replace
-      int droppedIndex = applicants.indexWhere((app) => app['Status'] == 'Dropped');
-
-      // Fetch current user's rating
-      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('User')
-          .doc(currentUserId)
-          .get();
-
-      double? rating;
-      if (userSnapshot.exists) {
-        var data = userSnapshot.data() as Map<String, dynamic>;
-        rating = (data['Rating'] != null) ? (data['Rating'] as num).toDouble() : null;
-      }
-
-      String applicantStatus = (rating != null && rating > 2.0) ? 'Accepted' : 'Applied';
-
-      if (droppedIndex != -1) {
-        // Replace dropped applicant with current user
-        applicants[droppedIndex] = {
-          'id': currentUserId,
-          'Status': applicantStatus,
-        };
-
-        int updatedVacancy = (shiftDetails!['Vacancy'] as int) - 1;
-        String availabilityStatus = updatedVacancy == 0 ? 'Full' : 'Available';
-
-        await shiftRef.update({
-          'Applicant': applicants,
-          'Vacancy': updatedVacancy,
-          'Availability': availabilityStatus,
-        });
-
-        setState(() {
-          shiftDetails!['Applicant'] = applicants;
-          shiftDetails!['Vacancy'] = updatedVacancy;
-          shiftDetails!['Availability'] = availabilityStatus;
-        });
-
-      } else {
-        // No dropped applicant found, apply as usual
-        int updatedVacancy = (shiftDetails!['Vacancy'] as int) - 1;
-        String availabilityStatus = updatedVacancy == 0 ? 'Full' : 'Available';
-
-        await shiftRef.update({
-          'Applicant': FieldValue.arrayUnion([
-            {'id': currentUserId, 'Status': applicantStatus}
-          ]),
-          'Vacancy': updatedVacancy,
-          'Availability': availabilityStatus,
-        });
-
-        setState(() {
-          shiftDetails!['Applicant'].add({'id': currentUserId, 'Status': applicantStatus});
-          shiftDetails!['Vacancy'] = updatedVacancy;
-          shiftDetails!['Availability'] = availabilityStatus;
-        });
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Shift applied successfully!")),
-      );
-    } catch (e) {
-      print('Error applying for shift: $e');
+    if (shiftDetails != null) {
+      await shiftController.applyForShift(shiftDetails!, widget.shiftId);
+      setState(() {
+      });
     }
   }
 
   Future<void> _dropShift() async {
-    if (shiftDetails == null || currentUserId == null) return;
-
-    try {
-      final shiftRef = FirebaseFirestore.instance
-          .collection('Workshop')
-          .doc(shiftDetails!['workshopId'])
-          .collection('Shifts')
-          .doc(widget.shiftId);
-
-      List<dynamic> updatedApplicants = List.from(shiftDetails!['Applicant'] ?? []);
-
-      for (var applicant in updatedApplicants) {
-        if (applicant['id'] == currentUserId) {
-          applicant['Status'] = 'Dropped';
-          break;
-        }
-      }
-
-      int updatedVacancy = (shiftDetails!['Vacancy'] as int) + 1;
-      String availabilityStatus = updatedVacancy == 0 ? 'Full' : 'Available';
-
-
-      await shiftRef.update({
-        'Applicant': updatedApplicants,
-        'Vacancy': updatedVacancy,
-        'Availability': availabilityStatus,
-      });
-
+    if (shiftDetails != null) {
+      await shiftController.dropShift(shiftDetails!, widget.shiftId);
       setState(() {
-        shiftDetails!['Applicant'] = updatedApplicants;
-        shiftDetails!['Vacancy'] = updatedVacancy;
-        shiftDetails!['Availability'] = availabilityStatus;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("You have dropped the shift.")),
-      );
-    } catch (e) {
-      print("Error dropping shift: $e");
     }
   }
+
+  Future<void> _checkIn() async {
+    if (shiftDetails != null) {
+      await shiftController.checkIn(context, shiftDetails!, widget.shiftId);
+      setState(() {});
+    }
+  }
+
 
 
   @override
@@ -229,26 +143,40 @@ class _ShiftDetailState extends State<ShiftDetail> {
           const SizedBox(height: 24),
           Center(
             child: ElevatedButton(
-              onPressed: () {
-                if (applicantStatus == "Accepted") {
-                  _dropShift();
-                } else if (applicantStatus != "Applied" && isAvailable) {
-                  _applyForShift();
+              onPressed: (applicantStatus == "Applied" ||
+                  applicantStatus == "Check In" ||
+                  (applicantStatus == "Accepted" && !_isToday(shiftDetails?['Date'])) ||
+                  (applicantStatus == "Accepted" && _isToday(shiftDetails?['Date'])))
+                  ? ()
+              async {
+                if (applicantStatus == "Accepted" && _isToday(shiftDetails?['Date'])) {
+                  await _checkIn();
+                } else if (applicantStatus == "Accepted") {
+                  await _dropShift();
+                } else if (applicantStatus != "Applied" && isAvailable && applicantStatus != "Check In") {
+                  await _applyForShift();
                 }
-              },
+              }
+                  : null, // disables the button if condition not met
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                backgroundColor: applicantStatus == "Accepted"
+                backgroundColor: (applicantStatus == "Accepted" && _isToday(shiftDetails?['Date']))
+                    ? Colors.green
+                    : (applicantStatus == "Accepted")
                     ? Colors.red
-                    : applicantStatus == "Applied"
+                    : (applicantStatus == "Applied" || applicantStatus == "Check In")
                     ? Colors.grey
                     : Colors.blue,
               ),
               child: Text(
-                applicantStatus == "Accepted"
+                applicantStatus == "Accepted" && _isToday(shiftDetails?['Date'])
+                    ? "Check In"
+                    : applicantStatus == "Accepted"
                     ? "Drop"
                     : applicantStatus == "Applied"
                     ? "Applied"
+                    : applicantStatus == "Check In"
+                    ? "Checked In"
                     : "Take Shift",
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),

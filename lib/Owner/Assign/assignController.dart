@@ -1,6 +1,14 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:intl/intl.dart';
+// import 'package:android_intent_plus/android_intent.dart';
+// import 'package:android_intent_plus/flag.dart';
+
 
 class AssignController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -76,7 +84,13 @@ class AssignController {
           double rated = (applicant["Mechanic's Rate"] ?? 0.0).toDouble();
           print("Checking shift: $shiftId, Date: $shiftDate, Applicants: $applicants");
 
-          if (shiftDate == today && status == 'Accepted') {
+          // If the applicant was accepted but did not attend and the shift date has passed
+          if (status == 'Accepted' && DateTime.parse(shiftDate).isBefore(now)) {
+            // Update status to 'Absent' in Firestore
+            await markAsAbsent(workshopId, shiftId, applicantId);
+            status = 'Absent'; // so it won't get processed in other categories
+            continue; // Skip further processing for this applicant
+          } else if (shiftDate == today && status == 'Check In') {
             todayAttendance[applicantId] = await fetchMechanicDetails(workshopId, applicantId, shiftId);
           } else if ((shiftDate == today || DateTime.parse(shiftDate).isAfter(now)) && status == 'Applied') {
             upcomingAttendance[applicantId] = await fetchMechanicDetails(workshopId, applicantId, shiftId);
@@ -95,6 +109,31 @@ class AssignController {
     print("Upcoming Attendance: $upcomingAttendance");
     print("Pending Payments: $pendingPayment");
     print("Completed Payments: $completedPayment");
+  }
+
+  // Update absent mechanic
+  Future<void> markAsAbsent(String workshopId, String shiftId, String applicantId) async {
+    var shiftDocRef = _firestore
+        .collection('Workshop')
+        .doc(workshopId)
+        .collection('Shifts')
+        .doc(shiftId);
+
+    var shiftDoc = await shiftDocRef.get();
+
+    if (shiftDoc.exists) {
+      var applicants = List<Map<String, dynamic>>.from(shiftDoc.data()?['Applicant'] ?? []);
+
+      applicants = applicants.map((applicant) {
+        if (applicant['id'] == applicantId) {
+          return {...applicant, 'Status': 'Absent'};
+        }
+        return applicant;
+      }).toList();
+
+      await shiftDocRef.update({'Applicant': applicants});
+      print('Marked $applicantId as Absent for shift $shiftId');
+    }
   }
 
   // Fetch mechanic details for a given applicant
@@ -275,31 +314,140 @@ class AssignController {
 
   // Pay the mechanic for the shift worked
   // missing Stripe
-  Future<void> payMechanic(String workshopId, String shiftId, double amount) async {
-    print("Entering payMechanic");
-
+  Future<void> payMechanic({
+    required BuildContext context,
+    required double amount,
+    required String applicantId,
+    required String shiftId,
+    required String workshopId,
+  }) async {
+    final Dio dio = Dio();
     try {
-      var receipt = {
-        'Amount': amount,
-        'Date': Timestamp.now(),
-        'Status': 'Completed'
-      };
+      print('inside');
+      final int centAmount = (amount * 100).toInt();
 
-      await _firestore
-          .collection('Workshop')
-          .doc(workshopId)
-          .collection('Shifts')
-          .doc(shiftId)
-          .update({
-        'Receipt': receipt,
-        'Applicant': FieldValue.arrayUnion([{'Status': 'Completed'}])
+      final response = await dio.post(
+        'http://10.0.2.2:5000/create-payment-intent',
+        data: {
+          'amount': centAmount,
+          'applicantId': applicantId,
+          'shiftId': shiftId,
+          'workshopId': workshopId,
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      print('inside 1');
+
+      final data = response.data;
+      final clientSecret = data['clientSecret'];
+      if (clientSecret == null) throw Exception('Missing client secret');
+
+      const platform = MethodChannel('com.ridemate.ridemate/payment');
+
+      print('inside 2');
+
+      final result = await platform.invokeMethod('startStripeActivity', {
+        'amount': amount,
+        'shiftId': shiftId,
+        'workshopId': workshopId,
+        'applicantId': applicantId,
       });
 
-      print("Payment completed and receipt saved.");
+      if (result == 'launched') {
+        print('StripeActivity launched successfully');
+      }
+
+      print('this is $result');
+
+
+      print('inside 3');
+
+      if (result == 'success') {
+        print('inside 4');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment successful')),
+        );
+      } else {
+        print('inside 5');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment failed')),
+        );
+      }
     } catch (e) {
-      print("Payment failed: $e");
+      print('Error during payment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment failed: $e')),
+      );
+    }
+    print('inside 6');
+
+  }
+
+
+  Future<Map<String, dynamic>?> createPaymentIntent(String amount, String currency) async {
+    try {
+      final body = {
+        'amount': amount,
+        'currency': currency,
+        'payment_method_types[]': 'card',
+      };
+
+      final Dio dio = Dio();
+
+      final response = await dio.post(
+        'https://api.stripe.com/v1/payment_intents',
+        data: body,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer SecretKey', // Replace with secret key
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (err) {
+      print('Error creating payment intent: $err');
+      return null;
     }
   }
+
+  Future<void> makePayment({required String amount, required String currency}) async {
+    try {
+      var paymentIntent = await createPaymentIntent(amount, currency);
+      if (paymentIntent == null) return;
+
+      // await Stripe.instance.initPaymentSheet(
+      //   paymentSheetParameters: SetupPaymentSheetParameters(
+      //     paymentIntentClientSecret: paymentIntent['client_secret'],
+      //     style: ThemeMode.light,
+      //     merchantDisplayName: 'RideMate',
+      //   ),
+      // );
+
+      await displayPaymentSheet();
+
+    } catch (e) {
+      print('Payment failed: $e');
+    }
+  }
+
+  Future<void> displayPaymentSheet() async {
+    try {
+      // await Stripe.instance.presentPaymentSheet();
+      print("Success: Payment completed!");
+    } catch (e) {
+      // if (e is StripeException) {
+      //   print("Payment Cancelled: ${e.error.message ?? 'Unknown error'}");
+      // } else {
+      //   print("Unexpected error: $e");
+      // }
+    }
+  }
+
 
   // To hold the selected rating from the slider (e.g., 1.0 to 5.0)
   double currentSliderValue = 3.0; // Default at 3 stars
@@ -368,5 +516,16 @@ class AssignController {
     }
   }
 
+
+  // void launchStripeActivity() {
+  //   const intent = AndroidIntent(
+  //     action: 'android.intent.action.MAIN',
+  //     package: 'com.ridemate.ridemate', // must match your Android package
+  //     componentName: 'com.ridemate.ridemate.StripeActivity',
+  //     flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+  //   );
+  //
+  //   intent.launch();
+  // }
 
 }

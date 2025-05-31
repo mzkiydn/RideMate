@@ -8,6 +8,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:158006515713:android:0b54ca922df4c0080e8800",
+        "android_client_info": {
+          "package_name": "com.ridemate.psm2_ridemate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2KH6b8noRAWNEkcGLD9CIOlOIaEzCuvg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:158006515713:android:0f6593372ea5b0420e8800",
         "android_client_info": {
           "package_name": "com.ridemate.ridemate"

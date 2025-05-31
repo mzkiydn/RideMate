@@ -53,22 +53,22 @@ class BaseScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Ride Mate'),
-        backgroundColor: Colors.deepPurple,
-        actions: <Widget>[
-          IconButton(
-            icon: _getUserTypeIcon(),
-            onPressed: () => _onIconTapped(context),
-          ),
-        ],
-      ),
+      // appBar: AppBar(
+      //   automaticallyImplyLeading: false,
+      //   // title: const Text('Ride Mate'),
+      //   backgroundColor: Colors.blueGrey,
+      //   // actions: <Widget>[
+      //   //   IconButton(
+      //   //     icon: _getUserTypeIcon(),
+      //   //     onPressed: () => _onIconTapped(context),
+      //   //   ),
+      //   // ],
+      // ),
       body: Column(
         children: [
           Container(
             color: Colors.blueGrey,
-            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+            padding: const EdgeInsets.fromLTRB(20.0, 24.0, 20.0, 16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

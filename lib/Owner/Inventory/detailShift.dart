@@ -180,96 +180,105 @@ class _DetailShiftState extends State<DetailShift> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DropdownButtonFormField<String>(
-              value: _selectedDay,
-              decoration: const InputDecoration(labelText: 'Day'),
-              items: _daysOfWeek.map((day) {
-                return DropdownMenuItem(value: day, child: Text(day));
-              }).toList(),
-              onChanged: (value) => setState(() => _selectedDay = value!),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _dateController,
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'Date',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.calendar_today),
-                  onPressed: _pickDate,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: _selectedDay,
+                      decoration: const InputDecoration(labelText: 'Day'),
+                      items: _daysOfWeek.map((day) {
+                        return DropdownMenuItem(value: day, child: Text(day));
+                      }).toList(),
+                      onChanged: (value) => setState(() => _selectedDay = value!),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _dateController,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'Date',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: _pickDate,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _startTimeController,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'Start Time',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.access_time),
+                          onPressed: () => _pickTime(true),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _endTimeController,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'End Time',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.access_time),
+                          onPressed: () => _pickTime(false),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _rateController,
+                      decoration: InputDecoration(
+                        labelText: 'Rate per Hour',
+                        prefixText: 'RM ',
+                        suffixText: ' / Hour',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: _onRateChanged,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _totalVacancyController,
+                      decoration: InputDecoration(
+                        labelText: 'Total Vacancies',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: _onVacancyChanged,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _jobScopeController,
+                      decoration: InputDecoration(
+                        labelText: 'Job Scope',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _startTimeController,
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'Start Time',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.access_time),
-                  onPressed: () => _pickTime(true),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _endTimeController,
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'End Time',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.access_time),
-                  onPressed: () => _pickTime(false),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _rateController,
-              decoration: InputDecoration(
-                labelText: 'Rate per Hour',
-                prefixText: 'RM ',
-                suffixText: ' / Hour',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: _onRateChanged,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _totalVacancyController,
-              decoration: InputDecoration(
-                labelText: 'Total Vacancies',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: _onVacancyChanged,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _jobScopeController,
-              decoration: InputDecoration(
-                labelText: 'Job Scope',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -304,7 +313,8 @@ class _DetailShiftState extends State<DetailShift> {
             ),
           ],
         ),
-      ), currentIndex: 1,
+      ),
+      currentIndex: 1,
     );
   }
 }

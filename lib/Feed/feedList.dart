@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -75,7 +77,7 @@ class _FeedListState extends State<FeedList> {
                   username: post.username,
                   date: post.date,
                   contentText: post.contentText,
-                  contentImageUrl: post.mediaUrl,
+                  contentImageUrl: post.image,
                   likeCount: post.likeCount,
                   commentCount: post.commentCount,
                   feedId: post.id,
@@ -229,23 +231,29 @@ class _PostingCardState extends State<PostingCard> {
               ],
             ),
             const SizedBox(height: 10),
+            // Content Image (optional)
+            if (widget.contentImageUrl != null && widget.contentImageUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.memory(
+                      base64Decode(widget.contentImageUrl!),
+                      height: 150,
+                      width: 150,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+
             // Content Text
             Text(
               widget.contentText,
               style: const TextStyle(fontSize: 14),
             ),
-            // Content Image (optional)
-            if (widget.contentImageUrl != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    widget.contentImageUrl!,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
+
             // Like and Comment Section
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:ridemate/Owner/Workshop/workshopController.dart';
+import 'package:ridemate/Template/masterScaffold.dart';
 
 class WorkshopDetail extends StatefulWidget {
-  final String? id; // Optional ID to identify the workshop being edited
+  final String? id;
 
   const WorkshopDetail({Key? key, this.id}) : super(key: key);
 
@@ -20,12 +21,12 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
   final TextEditingController ratingController = TextEditingController();
 
   late LatLng selectedLocation;
-  String appBarTitle = "Add Workshop"; // Default title
+  String appBarTitle = "Add Workshop";
 
   @override
   void initState() {
     super.initState();
-    selectedLocation = LatLng(37.7749, -122.4194); // Default location
+    selectedLocation = LatLng(37.7749, -122.4194);
 
     if (widget.id != null) {
       _loadWorkshop();
@@ -41,7 +42,6 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
       ratingController.text = workshop['Rating']?.toString() ?? '0.0';
       selectedLocation = LatLng(workshop['Latitude'] ?? 37.7749, workshop['Longitude'] ?? -122.4194);
 
-      // Update the AppBar title to the workshop name
       setState(() {
         appBarTitle = workshop['Name'] ?? 'Edit Workshop';
       });
@@ -50,7 +50,6 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
 
   void _saveWorkshop() {
     if (widget.id != null) {
-      // Update existing workshop
       workshopController.updateWorkshop(
         widget.id!,
         nameController.text,
@@ -61,7 +60,6 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
         selectedLocation.longitude,
       );
     } else {
-      // Add new workshop
       workshopController.addWorkshop(
         nameController.text,
         operatingHoursController.text,
@@ -71,97 +69,161 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
         selectedLocation.longitude,
       );
     }
-    Navigator.pop(context); // Return to the previous screen (workshop list)
+    Navigator.pop(context);
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this workshop?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      _deleteWorkshop();
+    }
   }
 
   void _deleteWorkshop() {
     if (widget.id != null) {
       workshopController.deleteWorkshop(widget.id!);
-      Navigator.pop(context); // Return to the previous screen (workshop list)
+      Navigator.pop(context);
     }
+  }
+
+  Widget buildInputField(String label, TextEditingController controller, {TextInputType? type}) {
+    return TextField(
+      controller: controller,
+      keyboardType: type,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      style: const TextStyle(fontSize: 16),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(appBarTitle), // Set the dynamic title
-        actions: [
-          if (widget.id != null)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: _deleteWorkshop,
-            ),
-        ],
+    return MasterScaffold(
+      customBarTitle: appBarTitle,
+      leftCustomBarAction: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: "Workshop Name"),
-              ),
-              TextField(
-                controller: operatingHoursController,
-                decoration: const InputDecoration(labelText: "Operating Hours"),
-              ),
-              TextField(
-                controller: contactController,
-                decoration: const InputDecoration(labelText: "Contact Number"),
-              ),
-              TextField(
-                controller: ratingController,
-                decoration: const InputDecoration(labelText: "Rating"),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 20),
-
-              // Map to select workshop location
-              Container(
-                height: 300,
-                child: FlutterMap(
-                  options: MapOptions(
-                    center: selectedLocation,
-                    zoom: 12.0,
-                    onTap: (tapPosition, latLng) {
-                      setState(() {
-                        selectedLocation = latLng;
-                      });
-                    },
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      subdomains: ['a', 'b', 'c'],
+      currentIndex: 4,
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  buildInputField("Workshop Name", nameController),
+                  const SizedBox(height: 16),
+                  buildInputField("Operating Hours", operatingHoursController),
+                  const SizedBox(height: 16),
+                  buildInputField("Contact Number", contactController, type: TextInputType.phone),
+                  const SizedBox(height: 16),
+                  buildInputField("Rating", ratingController, type: TextInputType.number),
+                  const SizedBox(height: 24),
+                  const Text("Workshop Location", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 250,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
                     ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: selectedLocation,
-                          width: 40,
-                          height: 40,
-                          builder: (ctx) => const Icon(
-                            Icons.location_pin,
-                            color: Colors.red,
-                            size: 40,
-                          ),
+                    clipBehavior: Clip.antiAlias,
+                    child: FlutterMap(
+                      options: MapOptions(
+                        center: selectedLocation,
+                        zoom: 12.0,
+                        onTap: (tapPosition, latLng) {
+                          setState(() {
+                            selectedLocation = latLng;
+                          });
+                        },
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          subdomains: ['a', 'b', 'c'],
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: selectedLocation,
+                              width: 40,
+                              height: 40,
+                              builder: (ctx) => const Icon(
+                                Icons.location_pin,
+                                color: Colors.red,
+                                size: 40,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
               ),
-
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saveWorkshop,
-                child: Text(widget.id == null ? "Add Workshop" : "Save Changes"),
-              ),
-            ],
+            ),
           ),
-        ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: Icon(widget.id == null ? Icons.add : Icons.save),
+                    label: Text(widget.id == null ? "Add Workshop" : "Save Changes"),
+                    onPressed: _saveWorkshop,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                if (widget.id != null) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.delete, color: Colors.white),
+                      label: const Text("Delete Workshop"),
+                      onPressed: _confirmDelete,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          )
+        ],
       ),
     );
   }

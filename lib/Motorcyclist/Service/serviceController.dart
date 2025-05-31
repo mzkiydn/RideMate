@@ -78,23 +78,68 @@ class ServiceController {
   }
 
   // initiate map
-  Future<List<Map<String, dynamic>>> initializeMap(LatLng userLocation) async {
-    final Distance distance = Distance(); // ✅ Add this line
-    final allWorkshops = await getWorkshops();
-    final sortedWorkshops = allWorkshops.map((workshop) {
-      final LatLng loc = LatLng(
-        double.parse(workshop['Latitude'].toString()),
-        double.parse(workshop['Longitude'].toString()),
-      );
-      final double km = distance.as(LengthUnit.Kilometer, userLocation, loc);
-      return {...workshop, 'Distance': km};
-    }).toList();
+  Future<List<Map<String, dynamic>>> initializeMap(LatLng userLocation, int type) async {
+    final Distance distance = Distance();
 
-    sortedWorkshops.sort((a, b) =>
-        (a['Distance'] as double).compareTo(b['Distance'] as double));
+    if (type == 0) {
+      final allWorkshops = await getWorkshops();
+      final sortedWorkshops = allWorkshops.map((workshop) {
+        final LatLng loc = LatLng(
+          double.parse(workshop['Latitude'].toString()),
+          double.parse(workshop['Longitude'].toString()),
+        );
+        final double km = distance.as(LengthUnit.Kilometer, userLocation, loc);
+        return {...workshop, 'Distance': km};
+      }).toList();
 
-    final nearby = sortedWorkshops.where((w) => w['Distance'] <= 20.0).toList();
-    return nearby.isNotEmpty ? nearby : sortedWorkshops;
+      sortedWorkshops.sort((a, b) =>
+          (a['Distance'] as double).compareTo(b['Distance'] as double));
+
+      final nearby = sortedWorkshops.where((w) => w['Distance'] <= 20.0).toList();
+      return nearby.isNotEmpty ? nearby : sortedWorkshops;
+
+    } else if (type == 1) {
+
+      final allHelp = await getHelpRequests();
+      final sortedHelps = allHelp.map((help) {
+        final LatLng loc = LatLng(
+          double.parse(help['Latitude'].toString()),
+          double.parse(help['Longitude'].toString()),
+        );
+        final double km = distance.as(LengthUnit.Kilometer, userLocation, loc);
+        return {...help, 'Distance': km};
+      }).toList();
+
+      sortedHelps.sort((a, b) =>
+          (a['Distance'] as double).compareTo(b['Distance'] as double));
+
+      final nearby = sortedHelps.where((w) => w['Distance'] <= 20.0).toList();
+      return nearby.isNotEmpty ? nearby : sortedHelps;
+    }
+
+    // Ensure you return an empty list if `type` is neither 0 nor 1
+    return [];
+  }
+
+  Stream<List<Map<String, dynamic>>> getHelpRequestsStream() {
+    return FirebaseFirestore.instance
+        .collection('Emergency')
+        .where('Status', isEqualTo: 'Pending')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'Latitude': data['Latitude'],
+          'Longitude': data['Longitude'],
+          'Owner': data['Owner'],
+          'Date': data['Date'],
+          'Description': data['Description'],
+          'Status': data['Status'],
+        };
+      }).toList();
+    });
   }
 
   // get current user location
@@ -139,10 +184,8 @@ class ServiceController {
     }
 
     final helpRequestData = {
-      'Location': {
-        'Latitude': userLocation.latitude,
-        'Longitude': userLocation.longitude,
-      },
+      'Latitude': userLocation.latitude,
+      'Longitude': userLocation.longitude,
       'Status': 'Pending',
       'Owner': currentUser.uid,
       'Date': DateTime.now(),
@@ -154,25 +197,37 @@ class ServiceController {
   }
 
   // display emergency that is pending
-  Stream<List<Map<String, dynamic>>> getHelpRequestsStream() {
-    return FirebaseFirestore.instance
-        .collection('Emergency')
-        .where('Status', isEqualTo: 'Pending')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          'Latitude': data['Location']['Latitude'],
-          'Longitude': data['Location']['Longitude'],
-          'Owner': data['Owner'],
-          'Date': data['Date'],
-          'Description': data['Description'],
-          'Status': data['Status'],
-        };
-      }).toList();
-    });
+  Future<List<Map<String, dynamic>>> getHelpRequests() async {
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('Emergency')
+          .where('Status', isEqualTo: 'Pending')
+          .get();
+
+      // Await all async operations and gather results into a List<Map<String, dynamic>>
+      final List<Map<String, dynamic>> helpRequests = await Future.wait(
+        snapshot.docs.map((doc) async {
+          final data = doc.data() as Map<String, dynamic>;
+          final userDoc = await FirebaseFirestore.instance.collection('User').doc(data['Owner']).get();
+
+          return {
+            'id': doc.id,
+            'Latitude': data['Latitude'],
+            'Longitude': data['Longitude'],
+            'Owner': data['Owner'],
+            'Date': data['Date'],
+            'Description': data['Description'],
+            'Status': data['Status'],
+            'Owner Name': userDoc['Username'],
+          };
+        }),
+      );
+
+      return helpRequests;
+    } catch (e) {
+      print('Error fetching help requests: $e');
+      return [];
+    }
   }
 
   // update emergency status to solve
@@ -182,7 +237,5 @@ class ServiceController {
     });
     print("Help request marked as solved!");
   }
-
-
 
 }

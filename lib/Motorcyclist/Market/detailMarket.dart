@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:ridemate/Motorcyclist/Market/marketController.dart';
 import 'package:ridemate/Template/masterScaffold.dart';
@@ -6,10 +10,12 @@ import 'package:ridemate/Template/masterScaffold.dart';
 class MarketDetail extends StatefulWidget {
   final String? marketId;
 
+
   const MarketDetail({super.key, this.marketId});
 
   @override
   _MarketDetailState createState() => _MarketDetailState();
+
 }
 
 class _MarketDetailState extends State<MarketDetail> {
@@ -18,6 +24,9 @@ class _MarketDetailState extends State<MarketDetail> {
   final TextEditingController _priceController = TextEditingController();
 
   String _pageTitle = 'Add Product';
+  File? _selectedImage;
+  String? _image;
+
 
   @override
   void initState() {
@@ -40,6 +49,7 @@ class _MarketDetailState extends State<MarketDetail> {
           _descriptionController.text = product['Description'] ?? '';
           _priceController.text = (product['Price'] ?? 0.00).toString();
           _pageTitle = 'Edit Product';
+          _image = product['Image'];
         });
       } else {
         setState(() => _pageTitle = 'Product not found');
@@ -52,26 +62,32 @@ class _MarketDetailState extends State<MarketDetail> {
 
   // Save the product using MarketController
   Future<void> _saveProduct() async {
-    final title = _nameController.text;
-    final description = _descriptionController.text;
-    final double price = double.tryParse(_priceController.text) ?? 0.00;
+    String? base64Image;
 
-    // Validate the inputs
-    if (title.isEmpty || description.isEmpty || price <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields with valid data')),
-      );
-      return;
+    if (_selectedImage != null) {
+      // Convert selected image file to base64 string without opening picker again
+      final bytes = await _selectedImage!.readAsBytes();
+      base64Image = base64Encode(bytes);
     }
 
     if (widget.marketId == null) {
-      // Add new product using MarketController
-      await MarketController().createMarket(title, description, price);
+      // Creating new product
+      await MarketController().createMarket(
+        _nameController.text,
+        _descriptionController.text,
+        double.parse(_priceController.text),
+        base64Image: base64Image,
+      );
     } else {
-      // Update existing product using MarketController
-      await MarketController().updateMarket(widget.marketId!, title, description, price);
+      // Updating existing product
+      await MarketController().updateMarket(
+        widget.marketId!,
+        _nameController.text,
+        _descriptionController.text,
+        double.parse(_priceController.text),
+        base64Image: base64Image, // null if no new image selected, no image update
+      );
     }
-
     Navigator.pop(context);
   }
 
@@ -110,6 +126,17 @@ class _MarketDetailState extends State<MarketDetail> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
+
   // Restrict input to numeric only (int or double)
   void _onPriceChanged(String value) {
     if (value.isNotEmpty && double.tryParse(value) == null) {
@@ -130,46 +157,86 @@ class _MarketDetailState extends State<MarketDetail> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Product',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        height: 180,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey),
+                        ),
+                        alignment: Alignment.center,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: _selectedImage != null
+                              ? Image.file(
+                            _selectedImage!,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            height: 180,
+                          )
+                              : (_image != null && _image!.isNotEmpty)
+                              ? Image.memory(
+                            base64Decode(_image!),
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            height: 180,
+                          )
+                              : const Text('Tap to select an image'),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Product',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _descriptionController,
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _priceController,
+                      decoration: InputDecoration(
+                        labelText: 'Price',
+                        prefixText: 'RM ',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: _onPriceChanged,
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descriptionController,
-              decoration: InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _priceController,
-              decoration: InputDecoration(
-                labelText: 'Price',
-                prefixText: 'RM ',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: _onPriceChanged,
             ),
             const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                SizedBox(
-                  width: 140,
+                Expanded(
                   child: ElevatedButton(
                     onPressed: _saveProduct,
                     style: ElevatedButton.styleFrom(
@@ -177,13 +244,14 @@ class _MarketDetailState extends State<MarketDetail> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: Text(widget.marketId == null ? 'Add Product' : 'Save'),
                   ),
                 ),
+                const SizedBox(width: 12),
                 if (widget.marketId != null)
-                  SizedBox(
-                    width: 140,
+                  Expanded(
                     child: ElevatedButton(
                       onPressed: _deleteProduct,
                       style: ElevatedButton.styleFrom(
@@ -191,6 +259,7 @@ class _MarketDetailState extends State<MarketDetail> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text('Remove'),
                     ),

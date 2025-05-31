@@ -75,4 +75,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'ridemate-e46a7.firebasestorage.app',
     iosBundleId: 'com.ridemate.ridemate',
   );
+
 }

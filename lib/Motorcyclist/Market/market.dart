@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -57,20 +60,43 @@ class _MarketState extends State<Market> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
+    final base64String = product['Image'] ?? '';
+    Widget imageWidget;
+
+    if (base64String.isNotEmpty) {
+      try {
+        Uint8List imageBytes = base64Decode(base64String);
+        imageWidget = Container(
+          height: 120,
+          alignment: Alignment.center,
+          child: Image.memory(
+            imageBytes,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image),
+          ),
+        );
+
+      } catch (e) {
+        // In case of decoding error, fallback to broken image icon
+        imageWidget = const Icon(Icons.broken_image);
+      }
+    } else {
+      // No image data, show placeholder icon
+      imageWidget = const Icon(Icons.image_not_supported);
+    }
+
     return GestureDetector(
       onTap: () {
         if (_tabController.index == 0) {
-          // If in "Market" tab, navigate to `marketView`
           Navigator.pushNamed(
             context,
             '/market/view',
             arguments: {
               'marketId': product['id'],
-              'isOwner': false, // or false, depending on the context
+              'isOwner': false,
             },
           ).then((_) => _fetchProducts());
         } else {
-          // If in "My Market" tab, navigate to `detailMarket`
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -88,10 +114,15 @@ class _MarketState extends State<Market> with SingleTickerProviderStateMixin {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Avoids stretching vertically
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: imageWidget,
+                ),
+                const SizedBox(height: 8),
                 Text(
                   product['Name'] ?? 'Unnamed',
                   textAlign: TextAlign.center,
@@ -161,7 +192,7 @@ class _MarketState extends State<Market> with SingleTickerProviderStateMixin {
                   crossAxisCount: 2,
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
-                  childAspectRatio: 3 / 2,
+                  childAspectRatio: 2 / 3,
                 ),
                 itemBuilder: (context, index) =>
                     _buildProductCard(_marketProducts[index]),

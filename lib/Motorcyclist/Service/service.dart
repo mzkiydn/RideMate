@@ -20,6 +20,7 @@ class Service extends StatefulWidget {
 class _ServiceState extends State<Service> {
   final ServiceController serviceController = ServiceController();
   List<Map<String, dynamic>> workshops = [];
+  List<Map<String, dynamic>> help = [];
   List<Map<String, dynamic>> products = [];
   LatLng? _userLocation;
   final Distance distance = const Distance();
@@ -37,10 +38,12 @@ class _ServiceState extends State<Service> {
   Future<void> initializeMap() async {
     final userLocation = await serviceController.getCurrentLocation();
     if (userLocation != null) {
-      final nearbyWorkshops = await serviceController.initializeMap(userLocation);
+      final nearbyWorkshops = await serviceController.initializeMap(userLocation,0);
+      final nearbyHelp = await serviceController.initializeMap(userLocation,1);
       setState(() {
         _userLocation = userLocation;
         workshops = nearbyWorkshops;
+        help = nearbyHelp;
       });
     }
   }
@@ -120,6 +123,25 @@ class _ServiceState extends State<Service> {
                 },
                 child: Text('Solve'),
               ),
+            if (!isCurrentUserOwner)
+            TextButton(
+              onPressed: () async {
+                if (_userLocation != null) {
+                  final lat = double.parse(helpRequest['Latitude'].toString());
+                  final lng = double.parse(helpRequest['Longitude'].toString());
+                  final url = Uri.parse(
+                    'https://www.google.com/maps/dir/?api=1&origin=${_userLocation!.latitude},${_userLocation!.longitude}&destination=$lat,$lng&travelmode=driving',
+                  );
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  } else {
+                    print("Could not launch Google Maps");
+                  }
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text('Get Directions'),
+            ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
@@ -226,6 +248,7 @@ class _ServiceState extends State<Service> {
                             ),
                           );
                         }).toList(),
+
                         // Workshop markers section
                         ...workshops.map((workshop) {
                           return Marker(
@@ -322,31 +345,80 @@ class _ServiceState extends State<Service> {
               ],
             ),
           ),
-          // List of workshops
+          // List of workshops and emergency
           Expanded(
             flex: 2,
-            child: ListView.builder(
-              itemCount: workshops.length,
-              itemBuilder: (context, index) {
-                final workshop = workshops[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: ListTile(
-                    title: Text(workshop['Name']),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  TabBar(
+                    labelColor: Colors.blue,
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: Colors.blue,
+                    tabs: [
+                      Tab(text: 'Workshops'),
+                      Tab(text: 'Emergency'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
                       children: [
-                        Text('Operating Hours: ${workshop['Operating Hours']}'),
-                        if (workshop.containsKey('Distance'))
-                          Text('Distance: ${workshop['Distance'].toStringAsFixed(2)} km'),
+                        // Workshops list
+                        ListView.builder(
+                          itemCount: workshops.length,
+                          itemBuilder: (context, index) {
+                            final workshop = workshops[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              child: ListTile(
+                                title: Text(workshop['Name']),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Operating Hours: ${workshop['Operating Hours']}'),
+                                    if (workshop.containsKey('Distance'))
+                                      Text('Distance: ${workshop['Distance'].toStringAsFixed(2)} km'),
+                                  ],
+                                ),
+                                onTap: () {
+                                  centerMapOnWorkshop(workshop);
+                                },
+                              ),
+                            );
+                          },
+                        ),
+
+                        // Help requests list
+                        ListView.builder(
+                          itemCount: help.length,
+                          itemBuilder: (context, index) {
+                            final emergency = help[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              child: ListTile(
+                                title: Text(emergency['Owner Name'] ?? 'Unknown'),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Description: ${emergency['Description']}'),
+                                    if (emergency.containsKey('Distance'))
+                                      Text('Distance: ${emergency['Distance'].toStringAsFixed(2)} km'),
+                                  ],
+                                ),
+                                onTap: () {
+                                  centerMapOnWorkshop(emergency);
+                                },
+                              ),
+                            );
+                          },
+                        ),
+
                       ],
                     ),
-                    onTap: () {
-                      centerMapOnWorkshop(workshop); // 👈 center the map
-                    },
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ),
         ],

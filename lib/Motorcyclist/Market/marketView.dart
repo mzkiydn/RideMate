@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:ridemate/Motorcyclist/Market/marketController.dart';
 import 'package:ridemate/Template/masterScaffold.dart';
@@ -22,10 +25,8 @@ class _MarketViewState extends State<MarketView> {
     _loadProductDetails();
   }
 
-  // Load product details from the MarketController
   Future<void> _loadProductDetails() async {
     try {
-      // Fetch product details using the MarketController
       Map<String, dynamic>? product = await MarketController().getMarketProductById(widget.marketId);
       setState(() {
         _product = product;
@@ -39,16 +40,27 @@ class _MarketViewState extends State<MarketView> {
     }
   }
 
-  // Navigate to the chat screen for this product's owner
-  void _startChat() {
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => ChatScreen(
-    //       recipientId: _product?['ownerId'],  // Assuming 'ownerId' is the field for the owner's user ID
-    //     ),
-    //   ),
-    // );
+  Widget _buildProductImage() {
+    final String? base64String = _product?['Image'];
+
+    if (base64String == null || base64String.isEmpty) {
+      return const Icon(Icons.broken_image, size: 150);
+    }
+
+    try {
+      Uint8List bytes = base64Decode(base64String);
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.memory(
+          bytes,
+          height: 200,
+          width: 200,
+          fit: BoxFit.cover,
+        ),
+      );
+    } catch (e) {
+      return const Icon(Icons.broken_image, size: 150);
+    }
   }
 
   @override
@@ -60,8 +72,8 @@ class _MarketViewState extends State<MarketView> {
     }
 
     if (_product == null) {
-      return Scaffold(
-        body: const Center(child: Text('Product not found')),
+      return const Scaffold(
+        body: Center(child: Text('Product not found')),
       );
     }
 
@@ -71,49 +83,70 @@ class _MarketViewState extends State<MarketView> {
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Navigator.pop(context),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _product!['Name'] ?? 'Unnamed Product',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _product!['Description'] ?? 'No description available.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Price: RM ${_product!['Price']?.toStringAsFixed(2) ?? '0.00'}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Colors.green,
+      body: Stack(
+        children: [
+          // Scrollable content
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 100), // leave space for button
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildProductImage(),
+                  const SizedBox(height: 16),
+                  Text(
+                    _product!['Name'] ?? 'Unnamed Product',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _product!['Description'] ?? 'No description available.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Price: RM ${_product!['Price']?.toStringAsFixed(2) ?? '0.00'}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
+          ),
+
+          // Bottom button
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: ElevatedButton(
               onPressed: () {
                 Navigator.pushNamed(
                   context,
                   '/chat/detail',
-                  arguments: {'otherUserId': _product!['Owner']}, // Pass the userId of the seller
+                  arguments: {'otherUserId': _product!['Owner']},
                 );
               },
               style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                backgroundColor: Colors.blue,
               ),
-              child: const Text('Chat with Seller'),
+              child: const Text(
+                'Chat with Seller',
+                style: TextStyle(fontSize: 16),
+              ),
             ),
-
-          ],
-        ),
+          ),
+        ],
       ),
       currentIndex: 2,
     );

@@ -48,7 +48,7 @@ class FeedController {
             username: username,
             date: formattedDate,
             contentText: doc['Content'],
-            mediaUrl: doc['URL'],
+            image: doc['Image'],
             likeCount: doc['Like Count'] ?? 0,
             commentCount: doc['Comment Count'] ?? 0,
           ),
@@ -69,8 +69,7 @@ class FeedController {
         'Owner': feed.username,
         'Date': Timestamp.now(),
         'Content': feed.contentText,
-        'URL': feed.mediaUrl,
-        'Media Type': feed.mediaType,
+        'Image': feed.image,
         'Like Count': 0,
         'Comment Count': 0,
       });

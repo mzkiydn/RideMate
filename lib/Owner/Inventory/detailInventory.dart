@@ -167,114 +167,123 @@ class _DetailInventoryState extends State<DetailInventory> {
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Navigator.pop(context),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descriptionController,
-              decoration: InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _priceController,
-              decoration: InputDecoration(
-                labelText: 'Price',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: _onPriceChanged,
-              style: const TextStyle(fontSize: 16),
-            ),
-            if (widget.isProduct) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _stockController,
-                decoration: InputDecoration(
-                  labelText: 'Stock',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: _onStockChanged,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (context) {
-                      return Container(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: _motorcycle.map((category) {
-                            return ListTile(
-                              title: Text(category),
-                              onTap: () {
-                                setState(() {
-                                  _selectedMotorcycle = category;
-                                });
-                                Navigator.pop(context);
-                              },
-                            );
-                          }).toList(),
-                        ),
-                      );
-                    },
-                  );
-                },
-                child: AbsorbPointer(
-                  child: TextField(
-                    controller: TextEditingController(text: _selectedMotorcycle),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Bottom padding to prevent overlap
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _nameController,
                     decoration: InputDecoration(
-                      labelText: 'Select Motorcycle',
+                      labelText: 'Name',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     style: const TextStyle(fontSize: 16),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _priceController,
+                    decoration: InputDecoration(
+                      labelText: 'Price',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: _onPriceChanged,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  if (widget.isProduct) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _stockController,
+                      decoration: InputDecoration(
+                        labelText: 'Stock',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: _onStockChanged,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (context) {
+                            return Container(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: _motorcycle.map((category) {
+                                  return ListTile(
+                                    title: Text(category),
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedMotorcycle = category;
+                                      });
+                                      Navigator.pop(context);
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      child: AbsorbPointer(
+                        child: TextField(
+                          controller: TextEditingController(text: _selectedMotorcycle),
+                          decoration: InputDecoration(
+                            labelText: 'Select Motorcycle',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: const Text('Available'),
+                    value: _isAvailable,
+                    onChanged: (value) {
+                      setState(() {
+                        _isAvailable = value;
+                      });
+                    },
+                  ),
+                ],
               ),
-            ],
-            const SizedBox(height: 12),
-            SwitchListTile(
-              title: const Text('Available'),
-              value: _isAvailable,
-              onChanged: (value) {
-                setState(() {
-                  _isAvailable = value;
-                });
-              },
             ),
-            const SizedBox(height: 20),
-            Row(
+          ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 140,
+                Expanded(
                   child: ElevatedButton(
                     onPressed: _saveItem,
                     style: ElevatedButton.styleFrom(
@@ -286,9 +295,9 @@ class _DetailInventoryState extends State<DetailInventory> {
                     child: Text(widget.itemId == null ? 'Add' : 'Save'),
                   ),
                 ),
-                if (widget.itemId != null)
-                  SizedBox(
-                    width: 140,
+                if (widget.itemId != null) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
                     child: ElevatedButton(
                       onPressed: _deleteItem,
                       style: ElevatedButton.styleFrom(
@@ -300,10 +309,11 @@ class _DetailInventoryState extends State<DetailInventory> {
                       child: const Text('Delete Item'),
                     ),
                   ),
+                ]
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       currentIndex: 1,
     );

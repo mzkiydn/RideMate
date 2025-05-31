@@ -7,6 +7,8 @@ class Market {
   final DateTime datePosted;
   final double latitude;
   final double longitude;
+  final String img;
+
 
   // Constructor
   Market({
@@ -18,6 +20,7 @@ class Market {
     required this.datePosted,
     required this.latitude,
     required this.longitude,
+    required this.img,
   });
 
   // Factory method to create a Market from Firestore data
@@ -31,6 +34,7 @@ class Market {
       datePosted: (data['Date']),
       latitude: data['Latitude'] ?? 0.0,
       longitude: data['Longitude'] ?? 0.0,
+      img: data['Image'] ?? '',
     );
   }
 
@@ -44,6 +48,7 @@ class Market {
       'Date': datePosted,
       'Latitude': latitude,
       'Longitude': longitude,
+      'Image': img,
     };
   }
 }

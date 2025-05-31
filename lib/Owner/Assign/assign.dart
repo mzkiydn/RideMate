@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ridemate/Owner/Assign/assignController.dart';
+import 'package:ridemate/Owner/Assign/payment.dart';
 import 'package:ridemate/Template/masterScaffold.dart';
 
 class Assign extends StatefulWidget {
@@ -12,6 +14,7 @@ class Assign extends StatefulWidget {
 class _AssignState extends State<Assign> with TickerProviderStateMixin {
   final AssignController _controller = AssignController();
   TabController? _tabController; // <-- Make it nullable
+  static const platform = MethodChannel('com.ridemate.ridemate/payment');
 
   @override
   void initState() {
@@ -174,12 +177,28 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
         trailing: ElevatedButton(
           onPressed: () async {
             if (isPending) {
-              // Pay mechanic
-              _controller.payMechanic(
-                data['Workshop ID'],
-                id,
-                data['Salary']?.toDouble() ?? 0.0,
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Payment(
+                    amount: data['Salary']?.toDouble() ?? 0.0,
+                    applicantId: id,
+                    shiftId: data['Shift ID'],
+                    workshopId: data['Workshop ID'],
+                  ),
+                ),
               );
+
+              // await _controller.payMechanic(
+              //   context: context,
+              //   amount: data['Salary']?.toDouble() ?? 0.0,
+              //   applicantId: id,
+              //   shiftId: data['Shift ID'],
+              //   workshopId: data['Workshop ID'],
+              // );
+
+              // Navigator.of(context).pop(); // Only after payment is done
+
             } else {
               // Reset the slider value first
               _controller.currentSliderValue = 2.5; // default middle
@@ -347,4 +366,14 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
     );
   }
 
+  // Future<void> startStripePayment(Map<String, dynamic> args) async {
+  //   try {
+  //     final result = await platform.invokeMethod('startStripeActivity', args);
+  //     if (result == 'success') {
+  //       // Call assignController to update status
+  //     }
+  //   } on PlatformException catch (e) {
+  //     // Handle error
+  //   }
+  // }
 }

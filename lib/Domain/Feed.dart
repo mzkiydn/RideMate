@@ -4,8 +4,7 @@ class Feed {
   final String username;
   final String date;
   final String contentText;
-  final String? mediaUrl; // Can store image or video URL (optional)
-  final String mediaType; // Either "none", "image", or "video"
+  final String? image; // Can store image or video URL (optional)
   final int likeCount;
   final int commentCount;
 
@@ -15,8 +14,7 @@ class Feed {
     required this.username,
     required this.date,
     required this.contentText,
-    this.mediaUrl,
-    this.mediaType = 'None', // Default: no media
+    this.image,
     this.likeCount = 0,
     this.commentCount = 0,
   });
@@ -29,8 +27,7 @@ class Feed {
       'Owner': username,
       'Date': date,
       'Content': contentText,
-      'URL': mediaUrl,
-      'Media Type': mediaType,
+      'Image': image,
       'Like Count': likeCount,
       'Comment Count': commentCount,
     };
@@ -44,8 +41,7 @@ class Feed {
       username: json['Owner'] as String,
       date: json['Date'] as String,
       contentText: json['Content'] as String,
-      mediaUrl: json['URL'] as String?,
-      mediaType: json['Media Type'] as String,
+      image: json['Image'] as String?,
       likeCount: json['Like Count'] as int,
       commentCount: json['Comment Count'] as int,
     );

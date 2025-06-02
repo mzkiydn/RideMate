@@ -3,6 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
+import 'dart:io';
+
 
 class WorkController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -79,11 +84,13 @@ class WorkController {
                     applicant['Status'])) {
               double salary = (shiftDoc['Salary'] ?? 0.0).toDouble();
               String date = shiftDoc['Date'] ?? (Timestamp.now().toString());
+              double rating = (shiftDoc['Rate'] ?? 0.0).toDouble();
 
               mechanicShifts.add({
                 'Workshop Name': workshopName,
                 'Salary': salary,
                 'Status': applicant['Status'],
+                'Rate': rating,
                 'Date': date,
                 'id': shiftDoc.id,
               });
@@ -122,6 +129,7 @@ class WorkController {
         String workshopName = workshopDoc['Name'] ?? 'Unknown Workshop';
         String contact = workshopDoc['Contact'] ?? 'Not Provided';
         String operating = workshopDoc['Operating Hours'] ?? 'Unknown';
+        double workshopRating = workshopDoc['Rating'].toDouble() ?? '0.0';
 
         var shiftDoc = await _firestore
             .collection('Workshop')
@@ -142,24 +150,42 @@ class WorkController {
           );
 
           double salary = (shiftData['Salary'] ?? 0.0).toDouble();
-          double rating = (shiftData['Rating'] ?? 0.0).toDouble();
+          double rating = (shiftData['Rate'] ?? 0.0).toDouble();
           double workRate = (userApplicant["Workshop's Rate"] ?? 0.0).toDouble();
+          double mechRate = (userApplicant["Mechanic's Rate"] ?? 0.0).toDouble();
           String date = shiftData['Date'] ?? '';
+          String payDate = userApplicant['Payment Date'] ?? '';
           String status = userApplicant['Status'] ?? 'Unknown';
+          // String mechanicName = userApplicant['id'] ?? '';
+          String receiptId = userApplicant['Transaction ID'] ?? '';
           String start = shiftData['Start'] ?? 'Unknown';
           String end = shiftData['End'] ?? 'Unknown';
+
+          // Fetch mechanic name properly from User collection
+          String mechanicName = 'Unknown Mechanic';
+          if (userApplicant.containsKey('id')) {
+            var userDoc = await _firestore.collection('User').doc(userApplicant['id']).get();
+            if (userDoc.exists) {
+              mechanicName = userDoc.data()?['Name'] ?? mechanicName;
+            }
+          }
 
           print(start);
           return {
             'Workshop ID': workshopId,
+            'Transaction ID': receiptId,
             'Workshop Name': workshopName,
+            'Mechanic Name': mechanicName,
             'Rate': rating,
+            'Rating': workshopRating,
             'Contact': contact,
             'Operating Hours': operating,
             "Workshop's Rate": workRate,
+            "Mechanic's Rate": mechRate,
             'Salary': salary,
             'Status': status,
             'Date': date,
+            'Payment Date': payDate,
             'Start': start,
             'End': end,
           };
@@ -182,7 +208,7 @@ class WorkController {
   Future<void> rateWorkshop(String workshopId, String shiftId, double? customRating) async {
     print("Entering rateWorkshop");
 
-    double finalRating = customRating ?? 0.0; // Replace with slider value if needed
+    double finalRating = customRating ?? currentSliderValue;
     print("Final workshop rating to use: $finalRating");
 
     var docRef = _firestore.collection('Workshop').doc(workshopId);
@@ -238,22 +264,91 @@ class WorkController {
 
       print("Workshop rated successfully. New rating: $updatedRating");
 
-      // Store mechanic's rating for this shift
-      // var shiftDocRef = _firestore
-      //     .collection('Workshop')
-      //     .doc(workshopId)
-      //     .collection('Shifts')
-      //     .doc(shiftId);
-      //
-      // var shiftDoc = await shiftDocRef.get();
-      //
-      // if (shiftDoc.exists) {
-      //   await shiftDocRef.update({'RatedByMechanic': finalRating});
-      //   print("Workshop rating stored in shift.");
-      // }
     } else {
       throw Exception('Workshop not found');
     }
   }
+
+  Future<void> generateAndPrintReceipt(Map<String, dynamic> shift) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(32.0),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  "RideMate Shift Receipt",
+                  style: pw.TextStyle(
+                    fontSize: 32,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 32),
+
+                _buildLabelValueText("Transaction Number", shift['Transaction ID']),
+                _buildLabelValueText("Workshop", shift['Workshop Name']),
+                _buildLabelValueText("Contact", shift['Contact']),
+                _buildLabelValueText("Mechanic's Name", shift['Mechanic Name']),
+                _buildLabelValueText("Date", shift['Date']),
+                _buildLabelValueText("Shift Time", "${shift['Start']} - ${shift['End']}"),
+                _buildLabelValueText("Hourly Rate", "RM${(shift['Rate'] ?? 0.0).toStringAsFixed(2)}"),
+                _buildLabelValueText("Salary", "RM${(shift['Salary'] ?? 0.0).toStringAsFixed(2)}"),
+                _buildLabelValueText("Payment Date", shift['Payment Date']),
+
+                pw.SizedBox(height: 40),
+                pw.Divider(),
+
+                pw.SizedBox(height: 16),
+                pw.Text(
+                  "Thank you for your hard work!",
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontStyle: pw.FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+  }
+
+  // Helper method to build label-value row for PDF
+  pw.Widget _buildLabelValueText(String label, dynamic value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 14.0),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Expanded(
+            flex: 3,
+            child: pw.Text(
+              "$label:",
+              style: pw.TextStyle(
+                fontSize: 18,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ),
+          pw.Expanded(
+            flex: 5,
+            child: pw.Text(
+              value?.toString() ?? '-',
+              style: pw.TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
 }

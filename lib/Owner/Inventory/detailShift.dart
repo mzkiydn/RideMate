@@ -69,7 +69,13 @@ class _DetailShiftState extends State<DetailShift> {
     );
 
     if (pickedDate != null) {
-      _dateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+      String formattedDate = DateFormat('yyyy-MM-dd').format(pickedDate);
+      String weekday = DateFormat('EEEE').format(pickedDate); // Get full day name
+
+      setState(() {
+        _dateController.text = formattedDate;
+        _selectedDay = weekday;
+      });
     }
   }
 
@@ -191,7 +197,7 @@ class _DetailShiftState extends State<DetailShift> {
                       items: _daysOfWeek.map((day) {
                         return DropdownMenuItem(value: day, child: Text(day));
                       }).toList(),
-                      onChanged: (value) => setState(() => _selectedDay = value!),
+                      onChanged: null, // disable manual selection
                     ),
                     const SizedBox(height: 12),
                     TextField(

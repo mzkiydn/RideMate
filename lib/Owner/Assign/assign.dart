@@ -366,14 +366,5 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
     );
   }
 
-  // Future<void> startStripePayment(Map<String, dynamic> args) async {
-  //   try {
-  //     final result = await platform.invokeMethod('startStripeActivity', args);
-  //     if (result == 'success') {
-  //       // Call assignController to update status
-  //     }
-  //   } on PlatformException catch (e) {
-  //     // Handle error
-  //   }
-  // }
+
 }

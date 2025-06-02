@@ -18,6 +18,7 @@ import 'package:ridemate/Owner/Assign/assign.dart';
 import 'package:ridemate/Owner/Inventory/detailInventory.dart';
 import 'package:ridemate/Owner/Inventory/detailShift.dart';
 import 'package:ridemate/Owner/Inventory/inventory.dart';
+import 'package:ridemate/Owner/Inventory/pastShift.dart';
 import 'package:ridemate/Owner/Workshop/workshop.dart';
 import 'package:ridemate/Owner/Workshop/workshopDetail.dart';
 import 'package:ridemate/Profile/profile.dart';
@@ -59,6 +60,11 @@ class AppRoutes {
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
           builder: (context) => DetailShift(shiftId: args?['shiftId']),
+        );
+      case '/pastShift/detail':
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (context) => PastShift(shiftId: args?['shiftId']),
         );
       case '/market':
         return MaterialPageRoute(builder: (context) => const Market());
@@ -102,25 +108,12 @@ class AppRoutes {
             otherUserId: args?['otherUserId'],  // Get the user ID passed in arguments, default to empty string if not available
           ),
         );
-      // case '/cart':
-      //   return MaterialPageRoute(builder: (context) => Cart());
-      // case '/chat/personal':
-      //   return MaterialPageRoute(builder: (context) => const Personal());
       case '/profile':
         return MaterialPageRoute(
           builder: (context) => const Profile(), // No controller parameter needed
         );
-      // case '/chat/personal/name':
-      //   final args = settings.arguments as Map<String, dynamic>;
-      //   return MaterialPageRoute(
-      //     builder: (context) => ChatDetail(name: args['name']),
-      //   );
-
-        // Example dynamic navigation based on option name
       case '/account':
         return MaterialPageRoute(builder: (context) => ProfileUpdate());
-      // case '/motorcycle':
-      //   return MaterialPageRoute(builder: (context) => const PlaceholderPage(title: 'Motorcycle'));
       case '/workshop':
         return MaterialPageRoute(builder: (context) => Workshop());
       case '/workshop/detail':
@@ -128,13 +121,6 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (context) => WorkshopDetail(id: args?['id']),
         );
-        // case '/notification':
-      //   return MaterialPageRoute(builder: (context) => const PlaceholderPage(title: 'Notification'));
-      // case '/history':
-      //   return MaterialPageRoute(builder: (context) => const PlaceholderPage(title: 'History'));
-      // case '/help':
-      //   return MaterialPageRoute(builder: (context) => const PlaceholderPage(title: 'Help & Documentation'));
-
       default:
         return MaterialPageRoute(builder: (context) => Login());
     }

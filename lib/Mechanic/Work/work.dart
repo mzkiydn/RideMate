@@ -59,6 +59,10 @@ class _WorkState extends State<Work> {
 
   Widget _buildMechanicInfo() {
     final m = _controller.mechanicDetails;
+    final double rating = (m['Rating'] ?? 0.0).toDouble();
+    final int fullStars = rating.floor();
+    final bool hasHalfStar = rating - fullStars >= 0.5;
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -67,15 +71,35 @@ class _WorkState extends State<Work> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(m['Name'] ?? 'Unknown',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(
+              m['Name'] ?? 'Unknown',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Text("Phone: ${m['Phone'] ?? '-'}"),
-            Text("Rating: ${m['Rating']?.toStringAsFixed(1) ?? '0.0'} "
-                "(${m['Rating Count'] ?? 0} shifts)"),
+            Row(
+              children: [
+                Text(
+                  "Rating: ${rating.toStringAsFixed(1)}",
+                  style: const TextStyle(fontSize: 14),
+                ),
+                ...List.generate(fullStars, (_) => const Icon(Icons.star, color: Colors.amber, size: 20)),
+                if (hasHalfStar) const Icon(Icons.star_half, color: Colors.amber, size: 20),
+                ...List.generate(5 - fullStars - (hasHalfStar ? 1 : 0),
+                        (_) => const Icon(Icons.star_border, color: Colors.amber, size: 20)),
+                const SizedBox(width: 8),
+
+              ],
+            ),
+            Text(
+              "Total Shifts: ${m['Rating Count'] ?? 0} ",
+              style: const TextStyle(fontSize: 14),
+            ),
             const SizedBox(height: 8),
-            Text("Total Salary: RM ${_controller.totalSalary.toStringAsFixed(2)}",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              "Total Salary: RM ${_controller.totalSalary.toStringAsFixed(2)}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),
@@ -100,8 +124,8 @@ class _WorkState extends State<Work> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Salary: RM${(shift['Salary'] ?? 0.0).toStringAsFixed(1)}'),
-            Text('Rating: ${(shift['Rate'] ?? 0.0).toStringAsFixed(1)}'),
+            Text('Salary: RM${(shift['Salary'] ?? 0.0).toStringAsFixed(2)}'),
+            Text('Rate: RM${(shift['Rate'] ?? 0.0).toStringAsFixed(2)} / Hour'),
             Text("Date: ${shift['Formatted Date']}"),
           ],
         ),

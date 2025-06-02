@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 
 class InventoryController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -387,4 +390,180 @@ class InventoryController {
       print('Error deleting shift: $e');
     }
   }
+
+  Future<Map<String, dynamic>> fetchShiftDetails(String shiftId) async {
+    try {
+      final workshopSnapshots = await _firestore.collection('Workshop').get();
+
+      for (var workshopDoc in workshopSnapshots.docs) {
+        String workshopId = workshopDoc.id;
+        String workshopName = workshopDoc['Name'] ?? 'Unknown Workshop';
+        String contact = workshopDoc['Contact'] ?? 'Not Provided';
+        String operating = workshopDoc['Operating Hours'] ?? 'Unknown';
+        double workshopRating = (workshopDoc['Rating'] ?? 0.0).toDouble();
+        double mechanicRate;
+
+        var shiftDoc = await _firestore
+            .collection('Workshop')
+            .doc(workshopId)
+            .collection('Shifts')
+            .doc(shiftId)
+            .get();
+
+        if (shiftDoc.exists) {
+          var shiftData = shiftDoc.data() ?? {};
+
+          String start = shiftData['Start'] ?? 'Unknown';
+          String end = shiftData['End'] ?? 'Unknown';
+          String date = shiftData['Date'] ?? '';
+          double rate = (shiftData['Rate'] ?? 0.0).toDouble();
+          double salary = (shiftData['Salary'] ?? 0.0).toDouble();
+          int vacancy = (shiftData['Vacancy'] ?? 0);
+
+          // Get all applicants
+          List<dynamic> applicantsRaw = shiftData['Applicant'] ?? [];
+
+          // Prepare list of applicants with details
+          List<Map<String, dynamic>> applicants = [];
+
+          for (var app in applicantsRaw) {
+            // Get mechanic name from User collection
+            String mechanicName = 'Unknown Mechanic';
+            if (app.containsKey('id')) {
+              var userDoc = await _firestore.collection('User').doc(app['id']).get();
+              if (userDoc.exists) {
+                mechanicName = userDoc.data()?['Name'] ?? mechanicName;
+              }
+            }
+
+            applicants.add({
+              'Mechanic ID': app['id'], // Add this line
+              'Mechanic Name': mechanicName,
+              'Salary': (app['Salary'] ?? salary).toDouble(),
+              "Workshop's Rate": (app["Workshop's Rate"] ?? workshopRating).toDouble(),
+              "Mechanic's Rate": (app["Mechanic's Rate"] ?? 0.0).toDouble(),
+              'Status': app['Status'] ?? 'Unknown',
+              'Transaction ID': app['Transaction ID'] ?? 'Unknown',
+              'Payment Date': app['Payment Date'] ?? 'Unknown',
+            });
+
+          }
+
+          return {
+            'Workshop ID': workshopId,
+            'Workshop Name': workshopName,
+            'Contact': contact,
+            'Operating Hours': operating,
+            'Rating': workshopRating,
+            'Start': start,
+            'End': end,
+            'Date': date,
+            'Rate': rate,
+            'Salary': salary,
+            'Vacancy': vacancy,
+            'Applicants': applicants,
+          };
+        }
+      }
+
+      throw Exception('Shift not found in any workshop');
+    } catch (e) {
+      throw Exception('Error fetching shift details: $e');
+    }
+  }
+
+  Future<void> generateAndPrintReceipt(Map<String, dynamic> shift, String mechanicId) async {
+    // Extract the correct applicant from the Applicants list
+    final applicants = shift['Applicants'] as List<dynamic>? ?? [];
+
+    final applicant = applicants.firstWhere(
+          (app) => app['Mechanic ID'] == mechanicId,
+      orElse: () => <String, dynamic>{}, // return empty map instead of null
+    );
+
+
+    if (applicant == null) {
+      throw Exception("Mechanic's data not found for receipt.");
+    }
+
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(32.0),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  "RideMate Shift Receipt",
+                  style: pw.TextStyle(
+                    fontSize: 32,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 32),
+
+                _buildLabelValueText("Transaction Number", applicant['Transaction ID']),
+                _buildLabelValueText("Workshop", shift['Workshop Name']),
+                _buildLabelValueText("Contact", shift['Contact']),
+                _buildLabelValueText("Mechanic's Name", applicant['Mechanic Name']),
+                _buildLabelValueText("Date", shift['Date']),
+                _buildLabelValueText("Shift Time", "${shift['Start']} - ${shift['End']}"),
+                _buildLabelValueText("Hourly Rate", "RM${(shift['Rate'] ?? 0.0).toStringAsFixed(2)}"),
+                _buildLabelValueText("Salary", "RM${(applicant['Salary'] ?? 0.0).toStringAsFixed(2)}"),
+                _buildLabelValueText("Payment Date", applicant['Payment Date']),
+
+                pw.SizedBox(height: 40),
+                pw.Divider(),
+
+                pw.SizedBox(height: 16),
+                pw.Text(
+                  "Thank you for your hard work!",
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontStyle: pw.FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+  }
+
+  // Helper method to build label-value row for PDF
+  pw.Widget _buildLabelValueText(String label, dynamic value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 14.0),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Expanded(
+            flex: 3,
+            child: pw.Text(
+              "$label:",
+              style: pw.TextStyle(
+                fontSize: 18,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ),
+          pw.Expanded(
+            flex: 5,
+            child: pw.Text(
+              value?.toString() ?? '-',
+              style: pw.TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 }

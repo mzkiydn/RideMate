@@ -1,12 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-require('dotenv').config({ path: '../.env' });
+//require('dotenv').config({ path: '../.env' });
+require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 app.use(cors({
-  origin: 'http://192.168.0.191:3000'  // Adjust to match your frontend's URL
+//http://192.168.0.191:3000
+  origin: '*'  // Adjust to match your frontend's URL
 }));
 app.use(bodyParser.json());
 

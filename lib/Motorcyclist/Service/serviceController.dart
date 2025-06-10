@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:ridemate/Domain/Cart.dart';
 
 class ServiceController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -37,6 +36,7 @@ class ServiceController {
           .collection('Workshop')
           .doc(workshopId)
           .collection('Products')
+          .where('Availability', isEqualTo: true)
           .get();
 
       return querySnapshot.docs.map((doc) {
@@ -58,6 +58,7 @@ class ServiceController {
           .collection('Workshop')
           .doc(workshopId)
           .collection('Services')
+          .where('Availability', isEqualTo: true)
           .get();
 
       return querySnapshot.docs.map((doc) {
@@ -73,8 +74,11 @@ class ServiceController {
   }
 
   // Function to handle search action (expand functionality as needed)
-  void onSearch() {
-    print("Search button pressed");
+  List<Map<String, dynamic>> searchWorkshops(List<Map<String, dynamic>> originalList, String query) {
+    return originalList.where((workshop) {
+      final name = (workshop['Name'] ?? '').toString().toLowerCase();
+      return name.contains(query.toLowerCase());
+    }).toList();
   }
 
   // initiate map

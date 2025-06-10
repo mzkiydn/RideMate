@@ -26,8 +26,9 @@ class _DetailInventoryState extends State<DetailInventory> {
 
   // For dropdown selection
   String? _selectedMotorcycle;
+
   // common motorcycle in Malaysia
-  final List<String> _motorcycle = ['Wave', 'EX5', 'RS150', 'RSX', 'Dash', 'Beat', 'Vario',
+  final List<String> _motorcycle = ['All Motorcycle','Wave', 'EX5', 'RS150', 'RSX', 'Dash', 'Beat', 'Vario',
     'LC135', 'Y15', 'NVX', 'Y16', 'Lagenda', 'Avantiz', 'RXZ', '125ZR'];
 
   @override
@@ -231,7 +232,8 @@ class _DetailInventoryState extends State<DetailInventory> {
                           builder: (context) {
                             return Container(
                               padding: const EdgeInsets.all(16.0),
-                              child: Column(
+                              child: ListView(
+                                shrinkWrap: true,
                                 children: _motorcycle.map((category) {
                                   return ListTile(
                                     title: Text(category),
@@ -244,6 +246,7 @@ class _DetailInventoryState extends State<DetailInventory> {
                                   );
                                 }).toList(),
                               ),
+
                             );
                           },
                         );

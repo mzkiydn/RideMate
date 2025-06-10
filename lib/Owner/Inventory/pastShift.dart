@@ -201,7 +201,7 @@ class _PastShiftState extends State<PastShift> {
             ],
           ),
         ),
-        currentIndex: 2,
+        currentIndex: 1,
       ),
     );
   }

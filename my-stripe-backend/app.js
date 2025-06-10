@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const stripe = require('stripe')('SecretKey');  // Replace with your actual Stripe Secret Key
+require('dotenv').config({ path: '../.env' });
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 app.use(cors({
@@ -11,6 +12,8 @@ app.use(bodyParser.json());
 
 // Create Payment Intent Endpoint
 app.post('/create-payment-intent', async (req, res) => {
+    console.log("Received body:", req.body); // Add this line
+
   try {
     const { amount, applicantId, shiftId } = req.body;  // amount in cents, applicantId, and shiftId
 

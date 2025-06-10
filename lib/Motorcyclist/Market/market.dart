@@ -8,6 +8,9 @@ import 'package:ridemate/Motorcyclist/Market/detailMarket.dart';
 import 'package:ridemate/Motorcyclist/Market/marketController.dart';
 import 'package:ridemate/Motorcyclist/Market/marketView.dart';
 import 'package:ridemate/Template/masterScaffold.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+
 
 class Market extends StatefulWidget {
   const Market({super.key});
@@ -21,6 +24,9 @@ class _MarketState extends State<Market> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _marketProducts = [];
   bool _isLoading = true;
   bool _isControllerReady = false;
+  final Distance _distance = const Distance();
+  LatLng? _userLocation;
+
 
   @override
   void initState() {
@@ -29,9 +35,13 @@ class _MarketState extends State<Market> with SingleTickerProviderStateMixin {
     _tabController.addListener(_handleTabChange);
     _isControllerReady = true;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      _userLocation = LatLng(position.latitude, position.longitude);
       _fetchProducts();
     });
+
   }
 
   void _handleTabChange() {
@@ -51,6 +61,27 @@ class _MarketState extends State<Market> with SingleTickerProviderStateMixin {
     } else {
       // For "My Market" tab, fetch products owned by the current user
       products = await MarketController().getOwnedMarketProducts();
+    }
+
+    // Compute distance if location is available
+    if (_userLocation != null && products != null) {
+      for (var product in products) {
+        if (product.containsKey('Latitude') && product.containsKey('Longitude')) {
+          final double lat = double.tryParse(product['Latitude'].toString()) ?? 0.0;
+          final double lng = double.tryParse(product['Longitude'].toString()) ?? 0.0;
+          final productLocation = LatLng(lat, lng);
+
+          final km = _distance.as(LengthUnit.Kilometer, _userLocation!, productLocation);
+          product['Distance'] = km;
+        }
+      }
+
+      // Sort by distance if desired
+      products.sort((a, b) {
+        final da = a['Distance'] ?? double.infinity;
+        final db = b['Distance'] ?? double.infinity;
+        return da.compareTo(db);
+      });
     }
 
     setState(() {
@@ -140,6 +171,13 @@ class _MarketState extends State<Market> with SingleTickerProviderStateMixin {
                   "RM ${product['Price']?.toStringAsFixed(2) ?? '0.00'}",
                   style: const TextStyle(color: Colors.green),
                 ),
+                const SizedBox(height: 6),
+                if (product.containsKey('Distance'))
+                  Text(
+                    "${product['Distance'].toStringAsFixed(2)} KM away",
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+
               ],
             ),
           ),

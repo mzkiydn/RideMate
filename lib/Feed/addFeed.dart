@@ -53,15 +53,25 @@ class _AddFeedState extends State<AddFeed> {
   }
 
   Future<void> _pickMedia() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800, // Resize to reduce size
+      maxHeight: 800,
+      imageQuality: 75, // Compress (0 = worst, 100 = best)
+    );
     if (pickedFile != null) {
-      // Read file bytes and convert to base64 string
-      final bytes = await File(pickedFile.path).readAsBytes();
-      final base64String = base64Encode(bytes);
+      try {
+        final bytes = await File(pickedFile.path).readAsBytes();
+        final base64String = base64Encode(bytes);
 
-      setState(() {
-        _base64Image = base64String;  // store base64 string instead of file path
-      });
+        setState(() {
+          _base64Image = base64String;
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error reading image: $e')),
+        );
+      }
     }
   }
 

@@ -21,10 +21,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'RideMate',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-                onGenerateRoute: AppRoutes.generateRoute,
+        theme: ThemeData(primarySwatch: Colors.blue,),
+        onGenerateRoute: AppRoutes.generateRoute,
         initialRoute: '/login',
       routes: {
         '/': (context) => Login(), // or whatever

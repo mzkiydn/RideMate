@@ -18,6 +18,10 @@ class _DetailProductState extends State<DetailProduct> {
   Map<String, dynamic>? workshop;
   List<Map<String, dynamic>> products = [];
   bool isLoading = true;
+  double rating = 0.0;
+  int fullStars = 0;
+  bool hasHalfStar = false;
+
 
   @override
   void initState() {
@@ -41,6 +45,9 @@ class _DetailProductState extends State<DetailProduct> {
           'Latitude': '0.0',
         },
       );
+      rating = (workshop!['Rating'] ?? 0).toDouble();
+      fullStars = rating.floor();
+      hasHalfStar = rating - fullStars >= 0.5;
       isLoading = false;
     });
   }
@@ -86,33 +93,11 @@ class _DetailProductState extends State<DetailProduct> {
                 border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Column(
-                    children: [
-                      const CircleAvatar(
-                        radius: 30,
-                        backgroundImage: AssetImage('assets/workshop_logo.png'),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: List.generate(
-                          5,
-                              (index) => Icon(
-                            index < double.tryParse(workshop?['Rating']?.toString() ?? '0')!.toInt()
-                                ? Icons.star
-                                : Icons.star_border,
-                            color: Colors.amber,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const SizedBox(height: 10),
                         Row(
@@ -134,6 +119,21 @@ class _DetailProductState extends State<DetailProduct> {
                               workshop?['Contact'] ?? 'N/A',
                               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              "${rating.toStringAsFixed(1)}",
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            ...List.generate(fullStars, (_) => const Icon(Icons.star, color: Colors.amber, size: 20)),
+                            if (hasHalfStar) const Icon(Icons.star_half, color: Colors.amber, size: 20),
+                            ...List.generate(5 - fullStars - (hasHalfStar ? 1 : 0),
+                                    (_) => const Icon(Icons.star_border, color: Colors.amber, size: 20)),
+                            const SizedBox(width: 8),
+
                           ],
                         ),
                       ],

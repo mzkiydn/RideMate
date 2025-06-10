@@ -24,6 +24,9 @@ if (flutterVersionName == null) {
     flutterVersionName = "1.0"
 }
 
+def stripeClientSecret = project.hasProperty("stripeClientSecret") ? project.stripeClientSecret : ""
+
+
 android {
     namespace = "com.ridemate.ridemate"
     compileSdk = 34
@@ -46,6 +49,8 @@ android {
         targetSdk = 34
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
+        buildConfigField "String", "STRIPE_CLIENT_SECRET", "\"${stripeClientSecret}\""
+
     }
 
     buildTypes {
@@ -69,5 +74,6 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.activity:activity:1.8.0'
     implementation 'com.google.android.material:material:1.9.0'
+
 
 }

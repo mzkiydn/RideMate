@@ -32,10 +32,32 @@ class AppRoutes {
         return MaterialPageRoute(builder: (context) => Login());
       case '/register':
         return MaterialPageRoute(builder: (context) => Register());
+
+      // For all user type
       case '/feed':
         return MaterialPageRoute(builder: (context) => const FeedList());
       case '/addFeed':
         return MaterialPageRoute(builder: (context) => const AddFeed());
+
+      case '/chat':
+        return MaterialPageRoute(builder: (context) => Chat());
+      case '/chat/detail':
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (context) => ChatDetail(
+            otherUserId: args?['otherUserId'],  // Get the user ID passed in arguments, default to empty string if not available
+          ),
+        );
+
+      case '/profile':
+        return MaterialPageRoute(
+          builder: (context) => const Profile(), // No controller parameter needed
+        );
+
+      case '/account':
+        return MaterialPageRoute(builder: (context) => ProfileUpdate());
+
+      //  Motorcyclist only
       case '/service':
         return MaterialPageRoute(builder: (context) => Service());
       case '/service/detail':
@@ -46,6 +68,24 @@ class AppRoutes {
             workshopId: args['workshopId'] ?? '',
           ),
         );
+
+      case '/market':
+        return MaterialPageRoute(builder: (context) => const Market());
+      case '/market/detail':
+        final args = settings.arguments as Map<dynamic, dynamic>?;
+        return MaterialPageRoute(
+          builder: (context) => MarketDetail(marketId: args?['marketId']),
+        );
+      case '/market/view':
+        final args = settings.arguments as Map<dynamic, dynamic>?;
+        return MaterialPageRoute(
+          builder: (context) => MarketView(
+            marketId: args?['marketId'],
+            isOwner: args != null && args['isOwner'] == true, // Check if 'isOwner' exists and is true
+          ),
+        );
+
+      // Workshop Owner only
       case '/inventory':
         return MaterialPageRoute(builder: (context) => const Inventory());
       case '/inventory/detail':
@@ -66,21 +106,19 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (context) => PastShift(shiftId: args?['shiftId']),
         );
-      case '/market':
-        return MaterialPageRoute(builder: (context) => const Market());
-      case '/market/detail':
-        final args = settings.arguments as Map<dynamic, dynamic>?;
+
+      case '/assign':
+        return MaterialPageRoute(builder: (context) => Assign());
+
+      case '/workshop':
+        return MaterialPageRoute(builder: (context) => Workshop());
+      case '/workshop/detail':
+        final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (context) => MarketDetail(marketId: args?['marketId']),
+          builder: (context) => WorkshopDetail(id: args?['id']),
         );
-      case '/market/view':
-        final args = settings.arguments as Map<dynamic, dynamic>?;
-        return MaterialPageRoute(
-          builder: (context) => MarketView(
-            marketId: args?['marketId'],
-            isOwner: args != null && args['isOwner'] == true, // Check if 'isOwner' exists and is true
-          ),
-        );
+
+      // Mechanic only
       case '/shift':
         return MaterialPageRoute(builder: (context) => const Shift());
       case '/shiftDetail':
@@ -90,37 +128,16 @@ class AppRoutes {
             shiftId: args?['shiftId'], // Only passing shiftId
           ),
         );
-      case '/assign':
-        return MaterialPageRoute(builder: (context) => Assign());
-    case '/work':
+
+      case '/work':
         return MaterialPageRoute(builder: (context) => Work());
       case '/workDetail':
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
           builder: (context) => WorkDetail(shiftId: args?['shiftId']),
         );
-      case '/chat':
-        return MaterialPageRoute(builder: (context) => Chat());
-      case '/chat/detail':
-        final args = settings.arguments as Map<String, dynamic>?;
-        return MaterialPageRoute(
-          builder: (context) => ChatDetail(
-            otherUserId: args?['otherUserId'],  // Get the user ID passed in arguments, default to empty string if not available
-          ),
-        );
-      case '/profile':
-        return MaterialPageRoute(
-          builder: (context) => const Profile(), // No controller parameter needed
-        );
-      case '/account':
-        return MaterialPageRoute(builder: (context) => ProfileUpdate());
-      case '/workshop':
-        return MaterialPageRoute(builder: (context) => Workshop());
-      case '/workshop/detail':
-        final args = settings.arguments as Map<String, dynamic>?;
-        return MaterialPageRoute(
-          builder: (context) => WorkshopDetail(id: args?['id']),
-        );
+
+
       default:
         return MaterialPageRoute(builder: (context) => Login());
     }

@@ -81,7 +81,7 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
         const SizedBox(height: 16),
         _buildSectionTitle("Upcoming Approvals"),
         if (_controller.upcomingAttendance.isEmpty)
-          const Text("No upcoming attendance"),
+          const Text("No upcoming approval"),
         for (var entry in _controller.upcomingAttendance.entries)
           _buildAttendanceCard(entry.key, entry.value, isToday: false),
       ],
@@ -188,16 +188,6 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
                   ),
                 ),
               );
-
-              // await _controller.payMechanic(
-              //   context: context,
-              //   amount: data['Salary']?.toDouble() ?? 0.0,
-              //   applicantId: id,
-              //   shiftId: data['Shift ID'],
-              //   workshopId: data['Workshop ID'],
-              // );
-
-              // Navigator.of(context).pop(); // Only after payment is done
 
             } else {
               // Reset the slider value first

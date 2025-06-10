@@ -19,6 +19,8 @@ class Service extends StatefulWidget {
 
 class _ServiceState extends State<Service> {
   final ServiceController serviceController = ServiceController();
+  TextEditingController searchController = TextEditingController();
+  List<Map<String, dynamic>> filteredWorkshops = [];
   List<Map<String, dynamic>> workshops = [];
   List<Map<String, dynamic>> help = [];
   List<Map<String, dynamic>> products = [];
@@ -27,6 +29,12 @@ class _ServiceState extends State<Service> {
   MapController? _mapController; // MapController is nullable
   bool isOwner = false; // Simulate the role of the user (owner or not)
   String helpDescription = '';
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -44,8 +52,48 @@ class _ServiceState extends State<Service> {
         _userLocation = userLocation;
         workshops = nearbyWorkshops;
         help = nearbyHelp;
+        filteredWorkshops = nearbyWorkshops;
       });
     }
+  }
+
+  void onSearch() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Search Workshop'),
+          content: TextField(
+            controller: searchController,
+            decoration: const InputDecoration(
+              hintText: 'Enter workshop name',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Perform search when user taps Search
+                setState(() {
+                  filteredWorkshops = serviceController.searchWorkshops(workshops, searchController.text);
+                });
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text('Search'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                searchController.clear();
+                setState(() {
+                  filteredWorkshops = workshops; // Reset to full list
+                });
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> requestHelp() async {
@@ -179,7 +227,7 @@ class _ServiceState extends State<Service> {
       rightCustomBarAction: IconButton(
         icon: Icon(Icons.search, color: Colors.white),
         onPressed: () {
-          serviceController.onSearch();
+          onSearch();
         },
       ),
       body: Column(
@@ -366,9 +414,9 @@ class _ServiceState extends State<Service> {
                       children: [
                         // Workshops list
                         ListView.builder(
-                          itemCount: workshops.length,
+                          itemCount: filteredWorkshops.length,
                           itemBuilder: (context, index) {
-                            final workshop = workshops[index];
+                            final workshop = filteredWorkshops[index];
                             return Card(
                               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               child: ListTile(

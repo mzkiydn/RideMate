@@ -62,8 +62,9 @@ class _ShiftState extends State<Shift> with SingleTickerProviderStateMixin {
                     final droppedShifts = snapshot.data![1];
 
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Timetable for taken shifts
+                        // Timetable
                         if (currentShifts.isNotEmpty)
                           _buildTimetable(currentShifts)
                         else
@@ -150,7 +151,7 @@ class _ShiftState extends State<Shift> with SingleTickerProviderStateMixin {
           rows: shifts.map((shift) {
             return DataRow(
               cells: [
-                DataCell(Text(shift['Name'] ?? 'Unknown')),
+                DataCell(Text(shift['workshopData']['Name'] ?? 'Unknown')),
                 ...['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                     .map((day) {
                   final shiftTime = shift['Day'] == day
@@ -171,7 +172,7 @@ class _ShiftState extends State<Shift> with SingleTickerProviderStateMixin {
       child: ListTile(
         leading: const Icon(Icons.schedule, color: Colors.blue),
         title: Text(
-          shift['Name'] ?? 'No name',
+          shift['workshopData']['Name'] ?? 'No name',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(

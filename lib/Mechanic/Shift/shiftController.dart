@@ -92,6 +92,7 @@ class ShiftController {
       DateTime? start = startDate != null ? DateFormat('yyyy-MM-dd').parse(startDate) : null;
       DateTime? end = endDate != null ? DateFormat('yyyy-MM-dd').parse(endDate) : null;
       DateTime today = DateTime.now();
+      DateTime cutoffDate = DateTime(today.year, today.month, today.day);
 
       List<Map<String, dynamic>> shifts = [];
 
@@ -121,7 +122,7 @@ class ShiftController {
               if (applicants[i]['id'] == currentUserId) {
                 String status = applicants[i]['Status'];
                 DateTime shiftDate = DateFormat('yyyy-MM-dd').parse(data['Date']);
-                if (shiftDate.isBefore(today)) {
+                if (shiftDate.isBefore(cutoffDate)) {
                   if (status == 'Accepted') {
                     applicants[i]['Status'] = 'Absent';
                     modified = true;
@@ -185,6 +186,7 @@ class ShiftController {
   List<Map<String, dynamic>> _mapShifts(List<QueryDocumentSnapshot> shiftDocs, String workshopId, Map<String, dynamic> workshopData) {
     return shiftDocs.map((shift) {
       Map<String, dynamic> shiftData = shift.data() as Map<String, dynamic>;
+      shiftData['workshopData'] = workshopData;
       shiftData['id'] = shift.id;
       shiftData['workshopId'] = workshopId;
       shiftData['Name'] = workshopData['Name'] ?? 'Unknown';

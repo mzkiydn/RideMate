@@ -3,6 +3,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:ridemate/Owner/Workshop/workshopController.dart';
 import 'package:ridemate/Template/masterScaffold.dart';
+import 'package:geolocator/geolocator.dart';
+
 
 class WorkshopDetail extends StatefulWidget {
   final String? id;
@@ -20,16 +22,40 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
   final TextEditingController contactController = TextEditingController();
   final TextEditingController ratingController = TextEditingController();
 
-  late LatLng selectedLocation;
+  LatLng? selectedLocation;
   String appBarTitle = "Add Workshop";
 
   @override
   void initState() {
     super.initState();
-    selectedLocation = LatLng(37.7749, -122.4194);
+    _initializeWorkshopWithLocation();
 
+  }
+
+  Future<void> _initializeWorkshopWithLocation() async {
     if (widget.id != null) {
-      _loadWorkshop();
+      await _loadWorkshop(); // For edit mode
+    } else {
+      // For add mode, get current location
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        await Geolocator.openLocationSettings();
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
+          print("Location permission denied.");
+          return;
+        }
+      }
+
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        selectedLocation = LatLng(position.latitude, position.longitude);
+      });
     }
   }
 
@@ -55,18 +81,18 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
         nameController.text,
         operatingHoursController.text,
         contactController.text,
-        double.parse(ratingController.text),
-        selectedLocation.latitude,
-        selectedLocation.longitude,
+        // double.parse(ratingController.text),
+        selectedLocation!.latitude,
+        selectedLocation!.longitude,
       );
     } else {
       workshopController.addWorkshop(
         nameController.text,
         operatingHoursController.text,
         contactController.text,
-        double.parse(ratingController.text),
-        selectedLocation.latitude,
-        selectedLocation.longitude,
+        // double.parse(ratingController.text),
+        selectedLocation!.latitude,
+        selectedLocation!.longitude,
       );
     }
     Navigator.pop(context);
@@ -139,8 +165,6 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
                   buildInputField("Operating Hours", operatingHoursController),
                   const SizedBox(height: 16),
                   buildInputField("Contact Number", contactController, type: TextInputType.phone),
-                  const SizedBox(height: 16),
-                  buildInputField("Rating", ratingController, type: TextInputType.number),
                   const SizedBox(height: 24),
                   const Text("Workshop Location", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 8),
@@ -153,7 +177,7 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
                     clipBehavior: Clip.antiAlias,
                     child: FlutterMap(
                       options: MapOptions(
-                        center: selectedLocation,
+                        center: selectedLocation ?? LatLng(3.1390, 101.6869), // Fallback center
                         zoom: 12.0,
                         onTap: (tapPosition, latLng) {
                           setState(() {
@@ -169,7 +193,7 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
                         MarkerLayer(
                           markers: [
                             Marker(
-                              point: selectedLocation,
+                              point: selectedLocation!,
                               width: 40,
                               height: 40,
                               builder: (ctx) => const Icon(
@@ -179,6 +203,19 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
                               ),
                             ),
                           ],
+                        ),
+                        Positioned(
+                          bottom: 20,
+                          right: 20,
+                          child: FloatingActionButton(
+                            onPressed: () async {
+                              Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+                              setState(() {
+                                selectedLocation = LatLng(position.latitude, position.longitude);
+                              });
+                            },
+                            child: const Icon(Icons.my_location),
+                          ),
                         ),
                       ],
                     ),

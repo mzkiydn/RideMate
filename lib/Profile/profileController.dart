@@ -59,7 +59,9 @@ class ProfileController {
     if (!isValidDate(birthDate)) return 'Invalid birth date format or future date.';
     if (newPassword.isNotEmpty && !isValidPassword(newPassword)) {
       return 'Password must be at least 6 characters, with 1 capital & 1 number.';
-    } else if (newPassword == currentPassword ){
+    } else if (newPassword == currentPassword && newPassword.isNotEmpty){
+      print(newPassword);
+      print(currentPassword);
       return 'New password must be different from the current password';
     }
 
@@ -70,7 +72,7 @@ class ProfileController {
       String storedEncryptedPassword = userDoc['Password'];
       String decryptedPassword = EncryptionHelper.decryptText(storedEncryptedPassword);
 
-      if (currentPassword != decryptedPassword) return 'Incorrect current password.';
+      if (currentPassword != decryptedPassword) return 'Please enter your current password.';
 
       final updates = {
         'Username': newUsername,

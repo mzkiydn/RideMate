@@ -22,6 +22,7 @@ class _MarketDetailState extends State<MarketDetail> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
 
   String _pageTitle = 'Add Product';
   File? _selectedImage;
@@ -127,13 +128,26 @@ class _MarketDetailState extends State<MarketDetail> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 75,
+    );
     if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+      try {
+        final bytes = await File(pickedFile.path).readAsBytes();
+        final base64String = base64Encode(bytes);
+
+        setState(() {
+          _selectedImage = File(pickedFile.path); // ✅ Add this line
+          _image = base64String;
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error reading image: $e')),
+        );
+      }
     }
   }
 

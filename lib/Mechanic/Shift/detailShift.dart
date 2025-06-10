@@ -143,18 +143,18 @@ class _ShiftDetailState extends State<ShiftDetail> {
           const SizedBox(height: 24),
           Center(
             child: ElevatedButton(
-              onPressed: (applicantStatus == "Applied" ||
+              onPressed: (applicantStatus == null || // NEW: allow null to trigger apply
+                  applicantStatus == "Applied" ||
                   applicantStatus == "Check In" ||
                   (applicantStatus == "Accepted" && !_isToday(shiftDetails?['Date'])) ||
                   (applicantStatus == "Accepted" && _isToday(shiftDetails?['Date'])))
-                  ? ()
-              async {
+                  ? () async {
                 if (applicantStatus == "Accepted" && _isToday(shiftDetails?['Date'])) {
                   await _checkIn();
                 } else if (applicantStatus == "Accepted") {
                   await _dropShift();
-                } else if (applicantStatus != "Applied" && isAvailable && applicantStatus != "Check In") {
-                  await _applyForShift();
+                } else if ((applicantStatus != "Applied" && applicantStatus != "Check In") || applicantStatus == null) {
+                  await _applyForShift(); // Called for null and available case
                 }
               }
                   : null, // disables the button if condition not met
@@ -169,15 +169,15 @@ class _ShiftDetailState extends State<ShiftDetail> {
                     : Colors.blue,
               ),
               child: Text(
-                applicantStatus == "Accepted" && _isToday(shiftDetails?['Date'])
+                (applicantStatus == "Accepted" && _isToday(shiftDetails?['Date']))
                     ? "Check In"
-                    : applicantStatus == "Accepted"
+                    : (applicantStatus == "Accepted")
                     ? "Drop"
-                    : applicantStatus == "Applied"
+                    : (applicantStatus == "Applied")
                     ? "Applied"
-                    : applicantStatus == "Check In"
+                    : (applicantStatus == "Check In")
                     ? "Checked In"
-                    : "Take Shift",
+                    : "Take Shift", // For null and available
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),

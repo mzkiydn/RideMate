@@ -11,7 +11,7 @@ import com.stripe.android.paymentsheet.PaymentSheetResult;
 public class StripeActivity extends ComponentActivity {
 
     private PaymentSheet paymentSheet;
-    private String clientSecret = "SecretKey";
+    private String clientSecret = BuildConfig.STRIPE_CLIENT_SECRET;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

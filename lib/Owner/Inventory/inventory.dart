@@ -232,28 +232,36 @@ class _InventoryState extends State<Inventory> {
                               return const Text('No products found');
                             }
 
-                            final products = snapshot.data!;
+                            final allProducts = snapshot.data!;
+                            final availableProducts = allProducts.where((p) => p['Availability'] == true).toList();
+                            final unavailableProducts = allProducts.where((p) => p['Availability'] == false).toList();
+                            final products = [...availableProducts, ...unavailableProducts];
                             return ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: products.length,
                               itemBuilder: (context, index) {
                                 final product = products[index];
+                                final isAvailable = product['Availability'] == true;
                                 return Card(
                                   elevation: 4,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
+                                  color: isAvailable ? null : Colors.grey.shade300,
                                   child: ListTile(
                                     title: Row(
                                       children: [
-                                        Text(
-                                          product['Name']!,
-                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        Expanded(
+                                          child: Text(
+                                            product['Name']!,
+                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                        const SizedBox(width: 100),
+                                        const SizedBox(width: 10),
                                         Text(
-                                          product['Stock'].toString(), // Display product stock
+                                          'Stock: ${product['Stock']}',
                                           style: const TextStyle(fontSize: 14, color: Colors.black87),
                                         ),
                                       ],
@@ -299,24 +307,32 @@ class _InventoryState extends State<Inventory> {
                               return const Text('No services found');
                             }
 
-                            final services = snapshot.data!;
+                            final allServices = snapshot.data!;
+                            final availableServices = allServices.where((s) => s['Availability'] == true).toList();
+                            final unavailableServices = allServices.where((s) => s['Availability'] == false).toList();
+                            final services = [...availableServices, ...unavailableServices];
                             return ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: services.length,
                               itemBuilder: (context, index) {
                                 final service = services[index];
+                                final isAvailable = service['Availability'] == true;
                                 return Card(
                                   elevation: 4,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
+                                  color: isAvailable ? null : Colors.grey.shade300,
                                   child: ListTile(
                                     title: Row(
                                       children: [
-                                        Text(
-                                          service['Name']!,
-                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        Expanded(
+                                          child: Text(
+                                            service['Name']!,
+                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
                                       ],
                                     ),

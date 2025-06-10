@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';  // Import Firebase Authentication
-import 'package:ridemate/Owner/Workshop/workshop.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class WorkshopController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -21,7 +20,7 @@ class WorkshopController {
   }
 
   // Add a new workshop with owner ID as the user session ID
-  Future<void> addWorkshop(String name, String operatingHours, String contactNumber, double rating, double latitude, double longitude) async {
+  Future<void> addWorkshop(String name, String operatingHours, String contactNumber, double latitude, double longitude) async {
     try {
       // Get the current user session ID (UID)
       String? userId = _auth.currentUser?.uid;
@@ -42,7 +41,7 @@ class WorkshopController {
         'Name': name,
         'Operating Hours': operatingHours,
         'Contact': contactNumber,
-        'Rating': rating,
+        'Rating': 5.0,
         'Latitude': latitude,
         'Longitude': longitude,
         'Owner': userId,  // Store the user session ID as OwnerId
@@ -60,7 +59,7 @@ class WorkshopController {
   }
 
   // Update an existing workshop by ID
-  Future<void> updateWorkshop(String id, String name, String operatingHours, String contactNumber, double rating, double latitude, double longitude) async {
+  Future<void> updateWorkshop(String id, String name, String operatingHours, String contactNumber, double latitude, double longitude) async {
     try {
 
       String? userId = _auth.currentUser?.uid;
@@ -80,7 +79,6 @@ class WorkshopController {
         'Name': name,
         'Operating Hours': operatingHours,
         'Contact': contactNumber,
-        'Rating': rating,
         'Latitude': latitude,
         'Longitude': longitude,
       });

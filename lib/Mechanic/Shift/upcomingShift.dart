@@ -122,7 +122,7 @@ class UpcomingShifts extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${shift['Date']} - ${shift['Date']}'),
+            Text('${shift['Day']} - ${shift['Date']}'),
             Text('Shift: ${shift['Start']} - ${shift['End']}'),
             Text('Rate: RM${shift['Rate']} / hour'),
           ],

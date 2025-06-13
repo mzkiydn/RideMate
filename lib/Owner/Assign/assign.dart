@@ -289,7 +289,13 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
     );
   }
 
-  void _showApprovalDialog(BuildContext context, AssignController controller, String workshopId, String shiftId, String applicantId) {
+  void _showApprovalDialog(
+      BuildContext context,
+      AssignController controller,
+      String workshopId,
+      String shiftId,
+      String applicantId,
+      ) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -300,40 +306,62 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
             TextButton(
               child: const Text('Reject', style: TextStyle(color: Colors.red)),
               onPressed: () async {
-                // Open comment input dialog
+                String tempComment = '';
+                final commentController = TextEditingController();
+
                 String? comment = await showDialog<String>(
                   context: dialogContext,
                   builder: (BuildContext context) {
-                    String tempComment = '';
-                    return AlertDialog(
-                      title: const Text('Rejection Comment'),
-                      content: TextField(
-                        decoration: const InputDecoration(hintText: 'Enter reason for rejection'),
-                        onChanged: (value) {
-                          tempComment = value;
-                        },
-                      ),
-                      actions: [
-                        TextButton(
-                          child: const Text('Cancel'),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        TextButton(
-                          child: const Text('Submit'),
-                          onPressed: () => Navigator.of(context).pop(tempComment),
-                        ),
-                      ],
+                    return StatefulBuilder(
+                      builder: (context, setState) {
+                        return AlertDialog(
+                          title: const Text('Rejection Comment'),
+                          content: TextField(
+                            controller: commentController,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter reason for rejection',
+                              errorText: null,
+                            ),
+                            maxLines: 3,
+                            onChanged: (value) {
+                              tempComment = value;
+                            },
+                          ),
+                          actions: [
+                            TextButton(
+                              child: const Text('Cancel'),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                            TextButton(
+                              child: const Text('Submit'),
+                              onPressed: () {
+                                if (tempComment.trim().isEmpty) {
+                                  Navigator.of(context).pop();
+                                  Navigator.of(context).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Please provide a reason for rejection.'),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                Navigator.of(context).pop(tempComment.trim());
+                              },
+                            ),
+                          ],
+                        );
+                      },
                     );
                   },
                 );
 
-                if (comment != null && comment.trim().isNotEmpty) {
+                if (comment != null && comment.isNotEmpty) {
                   Navigator.of(dialogContext).pop();
                   await controller.updateApplicantStatus(
                     workshopId,
                     shiftId,
                     applicantId,
-                    comment.trim(), // <-- send comment to backend
+                    comment,
                   );
                 }
               },
@@ -351,7 +379,6 @@ class _AssignState extends State<Assign> with TickerProviderStateMixin {
             ),
           ],
         );
-
       },
     );
   }

@@ -33,12 +33,27 @@ class RegisterController with ChangeNotifier {
     required String phoneNumber,
     required String userType,
   }) async {
-    if (username.isEmpty || email.isEmpty || password.isEmpty || name.isEmpty || userType.isEmpty) {
-      return 'Please fill all required fields.';
+    if (username.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        name.isEmpty ||
+        address.isEmpty ||
+        birthDate.isEmpty ||
+        phoneNumber.isEmpty ||
+        userType.isEmpty) {
+      return 'Please fill in all required fields.';
     }
+
+    if (!_isValidUsername(username)) return 'Username must be 3+ characters and contain no spaces.';
     if (!_isValidEmail(email)) return 'Invalid email format.';
-    if (!_isValidPassword(password)) return 'Password must be at least 6 characters, with 1 capital & 1 number.';
-    if (!_isValidDate(birthDate)) return 'Invalid birth date format or future date. Use YYYY-MM-DD.';
+    if (!_isValidPassword(password)) {
+      return 'Password must be at least 6 characters, include 1 capital letter and 1 number.';
+    }
+    if (!_isValidName(name)) return 'Name should contain only letters and spaces.';
+    if (!_isValidPhoneNumber(phoneNumber)) return 'Phone number must be digits only (9-11 characters).';
+    if (!_isValidDate(birthDate)) {
+      return 'Invalid birth date. Use format YYYY-MM-DD and ensure it’s not a future date.';
+    }
 
     try {
       toggleLoading(true);
@@ -50,15 +65,15 @@ class RegisterController with ChangeNotifier {
 
       if (existing.docs.isNotEmpty) return 'Username is already taken.';
 
-      // Step 1: Register user in Firebase Auth
+      // Register in Firebase Auth
       final authCredential = await firebase_auth.FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
       final firebaseUid = authCredential.user!.uid;
 
-      // Step 2: Encrypt password for storage
+      // Encrypt password
       String encryptedPassword = EncryptionHelper.encryptText(password);
 
-      // Step 3: Store user details in Firestore
+      // Save to Firestore
       User user = User(
         userID: firebaseUid,
         username: username,
@@ -73,11 +88,10 @@ class RegisterController with ChangeNotifier {
       );
 
       await _firestore.collection('User').doc(firebaseUid).set(user.toJson());
-
       return null;
     } on firebase_auth.FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        return 'This email is already registered with Firebase Authentication.';
+        return 'This email is already registered.';
       }
       return 'Firebase Auth Error: ${e.message}';
     } catch (e) {
@@ -86,6 +100,7 @@ class RegisterController with ChangeNotifier {
       toggleLoading(false);
     }
   }
+
 
   bool _isValidEmail(String email) {
     final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
@@ -105,4 +120,20 @@ class RegisterController with ChangeNotifier {
       return false;
     }
   }
+
+  bool _isValidUsername(String username) {
+    final regex = RegExp(r'^[^\s]{3,}$'); // no spaces, min 3 chars
+    return regex.hasMatch(username);
+  }
+
+  bool _isValidName(String name) {
+    final regex = RegExp(r"^[a-zA-Z\s]{2,}$"); // letters and spaces only
+    return regex.hasMatch(name);
+  }
+
+  bool _isValidPhoneNumber(String number) {
+    final regex = RegExp(r'^\d{9,11}$'); // digits only, 8-15 characters
+    return regex.hasMatch(number);
+  }
+
 }

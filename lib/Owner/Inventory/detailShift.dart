@@ -96,30 +96,57 @@ class _DetailShiftState extends State<DetailShift> {
   }
 
   Future<void> _saveShift() async {
-    final date = _dateController.text;
-    final double rate = double.tryParse(_rateController.text) ?? 0.0;
-    final int totalVacancy = int.tryParse(_totalVacancyController.text) ?? 0;
-    final jobScope = _jobScopeController.text;
-    final startTime = _startTimeController.text;
-    final endTime = _endTimeController.text;
+    final date = _dateController.text.trim();
+    final rateText = _rateController.text.trim();
+    final vacancyText = _totalVacancyController.text.trim();
+    final jobScope = _jobScopeController.text.trim();
+    final startTime = _startTimeController.text.trim();
+    final endTime = _endTimeController.text.trim();
 
-    if (startTime.isEmpty || endTime.isEmpty) {
+    if (date.isEmpty ||
+        startTime.isEmpty ||
+        endTime.isEmpty ||
+        rateText.isEmpty ||
+        vacancyText.isEmpty ||
+        jobScope.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select both start and end times')),
+        const SnackBar(content: Text('Please fill in all fields before saving.')),
       );
       return;
     }
 
-    // Ensure rate is formatted to 2 decimal places
-    final double formattedRate = double.parse(rate.toStringAsFixed(2));
-
-    if (widget.shiftId == null) {
-      await InventoryController().addShift(_selectedDay, date, startTime, endTime, totalVacancy, formattedRate, jobScope);
-    } else {
-      await InventoryController().updateShift(widget.shiftId!, _selectedDay, date, startTime, endTime, totalVacancy, formattedRate, jobScope);
+    final double? rate = double.tryParse(rateText);
+    if (rate == null || rate < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid positive rate.')),
+      );
+      return;
     }
 
-    Navigator.pop(context);
+    final int? totalVacancy = int.tryParse(vacancyText);
+    if (totalVacancy == null || totalVacancy <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid number for total vacancies.')),
+      );
+      return;
+    }
+
+    final double formattedRate = double.parse(rate.toStringAsFixed(2));
+
+    try {
+      if (widget.shiftId == null) {
+        await InventoryController().addShift(_selectedDay, date, startTime, endTime, totalVacancy, formattedRate, jobScope);
+      } else {
+        await InventoryController().updateShift(widget.shiftId!, _selectedDay, date, startTime, endTime, totalVacancy, formattedRate, jobScope);
+      }
+
+      Navigator.pop(context);
+    } catch (e) {
+      print('Error saving shift: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save shift.')),
+      );
+    }
   }
 
   Future<void> _deleteShift() async {

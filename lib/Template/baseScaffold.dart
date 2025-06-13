@@ -67,7 +67,7 @@ class BaseScaffold extends StatelessWidget {
       body: Column(
         children: [
           Container(
-            color: Colors.blueGrey,
+            color: Colors.deepPurple,
             padding: const EdgeInsets.fromLTRB(20.0, 24.0, 20.0, 16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

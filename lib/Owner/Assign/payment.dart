@@ -56,7 +56,7 @@ class _PaymentState extends State<Payment> {
     try {
       // 1. Request client secret from backend
       final response = await http.post(
-        Uri.parse('http://192.168.0.191:5000/create-payment-intent'),
+        Uri.parse('https://ridemate-backend.onrender.com/create-payment-intent'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'amount': (widget.amount * 100).toInt(), // in cents

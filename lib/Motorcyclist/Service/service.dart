@@ -125,6 +125,13 @@ class _ServiceState extends State<Service> {
             ),
             TextButton(
               onPressed: () async {
+                if (helpDescription == null || helpDescription.trim().isEmpty) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please provide a description.')),
+                  );
+                  return;
+                }
                 await serviceController.requestHelp(_userLocation!, helpDescription);
                 Navigator.of(context).pop();
               },

@@ -183,9 +183,7 @@ class _ShiftState extends State<Shift> with SingleTickerProviderStateMixin {
             Text('Rate: RM${shift['Rate']} / hour'),
           ],
         ),
-        trailing: isCurrent
-            ? const Icon(Icons.check, color: Colors.green)
-            : const Icon(Icons.arrow_forward_ios),
+        trailing: const Icon(Icons.arrow_forward_ios),
         onTap: () {
           Navigator.pushNamed(
             context,

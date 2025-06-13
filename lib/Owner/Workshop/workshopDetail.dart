@@ -75,26 +75,23 @@ class _WorkshopDetailState extends State<WorkshopDetail> {
   }
 
   void _saveWorkshop() {
-    if (widget.id != null) {
-      workshopController.updateWorkshop(
-        widget.id!,
-        nameController.text,
-        operatingHoursController.text,
-        contactController.text,
-        // double.parse(ratingController.text),
-        selectedLocation!.latitude,
-        selectedLocation!.longitude,
+    final name = nameController.text.trim();
+    final operatingHours = operatingHoursController.text.trim();
+    final contact = contactController.text.trim();
+
+    if (name.isEmpty || operatingHours.isEmpty || contact.isEmpty || selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please complete all fields and select a location.')),
       );
-    } else {
-      workshopController.addWorkshop(
-        nameController.text,
-        operatingHoursController.text,
-        contactController.text,
-        // double.parse(ratingController.text),
-        selectedLocation!.latitude,
-        selectedLocation!.longitude,
-      );
+      return;
     }
+
+    if (widget.id != null) {
+      workshopController.updateWorkshop(widget.id!, name, operatingHours, contact, selectedLocation!.latitude, selectedLocation!.longitude);
+    } else {
+      workshopController.addWorkshop(name, operatingHours, contact, selectedLocation!.latitude, selectedLocation!.longitude);
+    }
+
     Navigator.pop(context);
   }
 

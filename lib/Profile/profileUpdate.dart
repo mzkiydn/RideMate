@@ -76,7 +76,7 @@ class _ProfileUpdateState extends State<ProfileUpdate> {
     final newBirthDate = _birthDateController.text.trim();
     final newPhoneNumber = _phoneNumberController.text.trim();
 
-    if (newUsername.isEmpty || newName.isEmpty || newBirthDate.isEmpty) {
+    if (newUsername.isEmpty || newName.isEmpty || newBirthDate.isEmpty || newAddress.isEmpty || newPhoneNumber.isEmpty) {
       _showSnackBar('Please fill in all required fields.');
       return;
     }

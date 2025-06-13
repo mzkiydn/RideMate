@@ -83,28 +83,68 @@ class _DetailInventoryState extends State<DetailInventory> {
 
   // Save the product or service (add or update)
   Future<void> _saveItem() async {
-    final name = _nameController.text;
-    final description = _descriptionController.text;
-    final price = double.tryParse(_priceController.text) ?? 0.0;
-    final stock = widget.isProduct ? (int.tryParse(_stockController.text) ?? 0) : null;
+    final name = _nameController.text.trim();
+    final description = _descriptionController.text.trim();
+    final priceText = _priceController.text.trim();
+    final stockText = _stockController.text.trim();
     final motorcycle = _selectedMotorcycle;
     final isAvailable = _isAvailable;
 
+    if (name.isEmpty || description.isEmpty || priceText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all required fields.')),
+      );
+      return;
+    }
+
+    if (widget.isProduct && (stockText.isEmpty || motorcycle == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill stock and select a motorcycle.')),
+      );
+      return;
+    }
+
+    final price = double.tryParse(priceText);
+    if (price == null || price < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid price.')),
+      );
+      return;
+    }
+
+    int? stock;
     if (widget.isProduct) {
-      if (widget.itemId == null) {
-        await InventoryController().addProduct(name, description, price, stock!, isAvailable, motorcycle);
-      } else {
-        await InventoryController().updateProduct(widget.itemId!, name, description, price, stock!, isAvailable, motorcycle);
-      }
-    } else {
-      if (widget.itemId == null) {
-        await InventoryController().addService(name, description, price, isAvailable);
-      } else {
-        await InventoryController().updateService(widget.itemId!, name, description, price, isAvailable);
+      stock = int.tryParse(stockText);
+      if (stock == null || stock < 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid stock amount.')),
+        );
+        return;
       }
     }
 
-    Navigator.pop(context); // Go back to the Inventory screen
+    try {
+      if (widget.isProduct) {
+        if (widget.itemId == null) {
+          await InventoryController().addProduct(name, description, price, stock!, isAvailable, motorcycle);
+        } else {
+          await InventoryController().updateProduct(widget.itemId!, name, description, price, stock!, isAvailable, motorcycle);
+        }
+      } else {
+        if (widget.itemId == null) {
+          await InventoryController().addService(name, description, price, isAvailable);
+        } else {
+          await InventoryController().updateService(widget.itemId!, name, description, price, isAvailable);
+        }
+      }
+
+      Navigator.pop(context); // Go back to the Inventory screen
+    } catch (e) {
+      print("Error saving item: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save item.')),
+      );
+    }
   }
 
   Future<void> _deleteItem() async {

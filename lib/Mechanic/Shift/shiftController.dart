@@ -48,29 +48,45 @@ class ShiftController {
       for (var workshop in workshopQuery.docs) {
         Map<String, dynamic> workshopData = await fetchWorkshopData(workshop.id);
 
-        // Always fetch all shifts regardless of 'Dropped' status
         QuerySnapshot shiftQuery = await _firestore
             .collection('Workshop')
             .doc(workshop.id)
             .collection('Shifts')
             .get();
 
-        List<QueryDocumentSnapshot> filteredShiftDocs;
+        List<QueryDocumentSnapshot> filteredShiftDocs = [];
 
-        if (status == 'Dropped') {
-          filteredShiftDocs = shiftQuery.docs.where((doc) {
-            final List<dynamic> applicants = doc['Applicant'] ?? [];
-            return applicants.any((app) =>
+        for (var doc in shiftQuery.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final List<dynamic> applicants = data['Applicant'] ?? [];
+
+          DateTime today = DateTime.now();
+          DateTime shiftDate = DateFormat('yyyy-MM-dd').parse(data['Date']);
+          final shiftRef = _firestore
+              .collection('Workshop')
+              .doc(workshop.id)
+              .collection('Shifts')
+              .doc(doc.id);
+
+          // Automatically mark past shifts as Full if not already
+          if (shiftDate.isBefore(DateTime(today.year, today.month, today.day))) {
+            if (data['Availability'] != 'Full') {
+              await shiftRef.update({'Availability': 'Full'});
+              data['Availability'] = 'Full';
+            }
+          }
+
+          if (status == 'Dropped') {
+            bool isDropped = applicants.any((app) =>
             app['id'] == currentUserId && app['Status'] == 'Dropped');
-          }).toList();
-          print('Filtered dropped shifts: ${filteredShiftDocs.length}');
-        } else {
-          filteredShiftDocs = shiftQuery.docs.where((doc) {
-            final String availability = doc['Availability'] ?? '';
-            final List<dynamic> applicants = doc['Applicant'] ?? [];
-            return availability == status &&
-                !applicants.any((app) => app['id'] == currentUserId);
-          }).toList();
+            if (isDropped) filteredShiftDocs.add(doc);
+          } else {
+            bool isAvailable = data['Availability'] == status;
+            bool alreadyApplied = applicants.any((app) => app['id'] == currentUserId);
+            if (isAvailable && !alreadyApplied) {
+              filteredShiftDocs.add(doc);
+            }
+          }
         }
 
         shifts.addAll(_mapShifts(filteredShiftDocs, workshop.id, workshopData));
@@ -92,7 +108,7 @@ class ShiftController {
       DateTime? start = startDate != null ? DateFormat('yyyy-MM-dd').parse(startDate) : null;
       DateTime? end = endDate != null ? DateFormat('yyyy-MM-dd').parse(endDate) : null;
       DateTime today = DateTime.now();
-      DateTime cutoffDate = DateTime(today.year, today.month, today.day);
+      DateTime cutoffDate = DateTime.utc(today.year, today.month, today.day);
 
       List<Map<String, dynamic>> shifts = [];
 
@@ -122,6 +138,8 @@ class ShiftController {
               if (applicants[i]['id'] == currentUserId) {
                 String status = applicants[i]['Status'];
                 DateTime shiftDate = DateFormat('yyyy-MM-dd').parse(data['Date']);
+                shiftDate = DateTime.utc(shiftDate.year, shiftDate.month, shiftDate.day);
+
                 if (shiftDate.isBefore(cutoffDate)) {
                   if (status == 'Accepted') {
                     applicants[i]['Status'] = 'Absent';
@@ -235,12 +253,55 @@ class ShiftController {
   }
 
   // Apply for a shift
-  Future<void> applyForShift(Map<String, dynamic> shiftDetails, String shiftId) async {
+  Future<void> applyForShift(Map<String, dynamic> shiftDetails, String shiftId, {BuildContext? context}) async {
     String? currentUserId = _auth.currentUser?.uid;
     if (shiftDetails == null || currentUserId == null) return;
 
     try {
-      final shiftRef = FirebaseFirestore.instance
+      final newDate = shiftDetails['Date'];
+      final newStart = _parseTime(shiftDetails['Start']);
+      final newEnd = _parseTime(shiftDetails['End']);
+
+      // 1. Check for time clash
+      final workshopQuery = await _firestore.collection('Workshop').get();
+      for (var workshop in workshopQuery.docs) {
+        final shiftsSnapshot = await _firestore
+            .collection('Workshop')
+            .doc(workshop.id)
+            .collection('Shifts')
+            .get();
+
+        for (var shiftDoc in shiftsSnapshot.docs) {
+          final data = shiftDoc.data();
+          final workshopData = await fetchWorkshopData(workshop.id);
+          final applicants = List.from(data['Applicant'] ?? []);
+          final isUserApplied = applicants.any((app) =>
+          app['id'] == currentUserId &&
+              (app['Status'] == 'Applied' || app['Status'] == 'Accepted'));
+
+          if (!isUserApplied || data['Date'] != newDate) continue;
+
+          final existingStart = _parseTime(data['Start']);
+          final existingEnd = _parseTime(data['End']);
+
+          if (_isTimeOverlap(newStart, newEnd, existingStart, existingEnd)) {
+            if (context != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Shift clash with ${workshopData['Name'] ?? 'another workshop'} on $newDate',
+                  ),
+                  // backgroundColor: Colors.red,
+                ),
+              );
+            }
+            return; // Abort apply
+          }
+        }
+      }
+
+      // 2. Proceed with original apply logic
+      final shiftRef = _firestore
           .collection('Workshop')
           .doc(shiftDetails['workshopId'])
           .collection('Shifts')
@@ -249,12 +310,7 @@ class ShiftController {
       List<dynamic> applicants = List.from(shiftDetails['Applicant'] ?? []);
       int droppedIndex = applicants.indexWhere((app) => app['Status'] == 'Dropped');
 
-      // Fetch current user's rating
-      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('User')
-          .doc(currentUserId)
-          .get();
-
+      DocumentSnapshot userSnapshot = await _firestore.collection('User').doc(currentUserId).get();
       double? rating;
       if (userSnapshot.exists) {
         var data = userSnapshot.data() as Map<String, dynamic>;
@@ -263,15 +319,14 @@ class ShiftController {
 
       String applicantStatus = (rating != null && rating > 2.0) ? 'Accepted' : 'Applied';
 
+      int updatedVacancy = (shiftDetails['Vacancy'] as int) - 1;
+      String availabilityStatus = updatedVacancy == 0 ? 'Full' : 'Available';
+
       if (droppedIndex != -1) {
-        // Replace dropped applicant with current user
         applicants[droppedIndex] = {
           'id': currentUserId,
           'Status': applicantStatus,
         };
-
-        int updatedVacancy = (shiftDetails['Vacancy'] as int) - 1;
-        String availabilityStatus = updatedVacancy == 0 ? 'Full' : 'Available';
 
         await shiftRef.update({
           'Applicant': applicants,
@@ -279,10 +334,6 @@ class ShiftController {
           'Availability': availabilityStatus,
         });
       } else {
-        // No dropped applicant found, apply as usual
-        int updatedVacancy = (shiftDetails['Vacancy'] as int) - 1;
-        String availabilityStatus = updatedVacancy == 0 ? 'Full' : 'Available';
-
         await shiftRef.update({
           'Applicant': FieldValue.arrayUnion([
             {'id': currentUserId, 'Status': applicantStatus}
@@ -294,6 +345,15 @@ class ShiftController {
     } catch (e) {
       print('Error applying for shift: $e');
     }
+  }
+
+  DateTime _parseTime(String timeStr) {
+    final parts = timeStr.split(':');
+    return DateTime(0, 1, 1, int.parse(parts[0]), int.parse(parts[1]));
+  }
+
+  bool _isTimeOverlap(DateTime start1, DateTime end1, DateTime start2, DateTime end2) {
+    return start1.isBefore(end2) && end1.isAfter(start2);
   }
 
   // Drop a shift

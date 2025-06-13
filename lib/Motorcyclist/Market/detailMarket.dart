@@ -63,6 +63,21 @@ class _MarketDetailState extends State<MarketDetail> {
 
   // Save the product using MarketController
   Future<void> _saveProduct() async {
+
+    final error = validateMarketItem(
+      title: _nameController.text,
+      price: _priceController.text,
+      description: _descriptionController.text,
+      hasImage: _image != null, // or existingImages.isNotEmpty
+    );
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+      return; // Stop submit
+    }
+
     String? base64Image;
 
     if (_selectedImage != null) {
@@ -90,6 +105,28 @@ class _MarketDetailState extends State<MarketDetail> {
       );
     }
     Navigator.pop(context);
+  }
+
+  String? validateMarketItem({required String title, required String price, required String description, required bool hasImage}) {
+    if (title.trim().isEmpty || title.length < 3) {
+      return 'Name must be at least 3 characters long.';
+    }
+
+    if (price.trim().isEmpty) return 'Price is required.';
+    final parsedPrice = double.tryParse(price);
+    if (parsedPrice == null || parsedPrice <= 0) {
+      return 'Enter a valid price greater than 0.';
+    }
+
+    if (description.trim().isEmpty || description.length < 10) {
+      return 'Description must be at least 10 characters long.';
+    }
+
+    if (!hasImage) {
+      return 'Please upload at least one image.';
+    }
+
+    return null; // no error
   }
 
   // Delete the product using MarketController

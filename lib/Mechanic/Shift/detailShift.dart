@@ -50,9 +50,8 @@ class _ShiftDetailState extends State<ShiftDetail> {
 
   Future<void> _applyForShift() async {
     if (shiftDetails != null) {
-      await shiftController.applyForShift(shiftDetails!, widget.shiftId);
-      setState(() {
-      });
+      await shiftController.applyForShift(shiftDetails!, widget.shiftId, context: context);
+      await _fetchShiftDetails();
     }
   }
 
@@ -143,7 +142,7 @@ class _ShiftDetailState extends State<ShiftDetail> {
           const SizedBox(height: 24),
           Center(
             child: ElevatedButton(
-              onPressed: (applicantStatus == null || // NEW: allow null to trigger apply
+              onPressed: (applicantStatus == null ||
                   applicantStatus == "Applied" ||
                   applicantStatus == "Check In" ||
                   (applicantStatus == "Accepted" && !_isToday(shiftDetails?['Date'])) ||

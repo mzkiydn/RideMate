@@ -25,8 +25,7 @@ class UpcomingShifts extends StatelessWidget {
         final takenShifts = snapshot.data![0];
         final availableShifts = snapshot.data![1];
 
-        return Expanded(
-          child: SingleChildScrollView(
+        return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -69,8 +68,7 @@ class UpcomingShifts extends StatelessWidget {
                   ...availableShifts.map((shift) => _buildShiftCard(context, shift)),
               ],
             ),
-          ),
-        );
+          );
       },
     );
   }
@@ -94,7 +92,7 @@ class UpcomingShifts extends StatelessWidget {
           rows: shifts.map((shift) {
             return DataRow(
               cells: [
-                DataCell(Text(shift['Name'] ?? 'Unknown')),
+                DataCell(Text(shift['workshopData']['Name'] ?? 'Unknown')),
                 ...['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                     .map((day) {
                   final shiftTime = shift['Day'] == day
@@ -116,7 +114,7 @@ class UpcomingShifts extends StatelessWidget {
       child: ListTile(
         leading: const Icon(Icons.schedule, color: Colors.blue),
         title: Text(
-          shift['Name'] ?? 'No name',
+          shift['workshopData']['Name'] ?? 'No name',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(

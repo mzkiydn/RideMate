@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 
 class AssignController {
@@ -291,24 +292,34 @@ class AssignController {
   }
 
   // Parse a time string into a DateTime object
-  DateTime? _parseTimeString(String timeString) {
+  DateTime? _parseTimeString(String timeStr) {
     try {
-      DateFormat format = DateFormat("hh:mm a");
-      return format.parse(timeString);
+      final parts = timeStr.split(':');
+      if (parts.length != 2) throw FormatException("Invalid time format");
+
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+
+      return DateTime(0, 1, 1, hour, minute);
     } catch (e) {
-      print("Error parsing time string: $timeString, error: $e");
+      print("Error parsing time string: $timeStr, error: $e");
       return null;
     }
   }
 
   // Call a mechanic using their phone number
-  // missing calling function
   Future<void> callMechanic(String phoneNumber) async {
     print("Calling mechanic at: $phoneNumber");
     final Uri url = Uri(scheme: 'tel', path: phoneNumber);
-    // Open the phone dialer if needed (implementing platform-specific functionality)
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      print('Could not launch $url');
+    }
   }
 
+  // Change status to complete
   Future<void> completePayment(String workshopId, String shiftId, String applicantId) async {
     var shiftDocRef = _firestore
         .collection('Workshop')

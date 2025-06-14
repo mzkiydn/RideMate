@@ -99,8 +99,9 @@ class ServiceController {
       sortedWorkshops.sort((a, b) =>
           (a['Distance'] as double).compareTo(b['Distance'] as double));
 
-      final nearby = sortedWorkshops.where((w) => w['Distance'] <= 20.0).toList();
-      return nearby.isNotEmpty ? nearby : sortedWorkshops;
+      // final nearby = sortedWorkshops.where((w) => w['Distance'] <= 20.0).toList();
+      // return nearby.isNotEmpty ? nearby : sortedWorkshops;
+      return sortedWorkshops;
 
     } else if (type == 1) {
 
@@ -125,24 +126,44 @@ class ServiceController {
     return [];
   }
 
-  Stream<List<Map<String, dynamic>>> getHelpRequestsStream() {
+
+  Stream<List<Map<String, dynamic>>> getHelpRequestsStreamWithDistance(LatLng userLocation) {
+    final Distance distanceCalc = Distance();
+
     return FirebaseFirestore.instance
         .collection('Emergency')
         .where('Status', isEqualTo: 'Pending')
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          'Latitude': data['Latitude'],
-          'Longitude': data['Longitude'],
-          'Owner': data['Owner'],
-          'Date': data['Date'],
-          'Description': data['Description'],
-          'Status': data['Status'],
-        };
-      }).toList();
+        .asyncMap((snapshot) async {
+      final List<Map<String, dynamic>> helpRequests = await Future.wait(
+        snapshot.docs.map((doc) async {
+          final data = doc.data();
+          final userDocSnapshot = await FirebaseFirestore.instance.collection('User').doc(data['Owner']).get();
+          final ownerName = userDocSnapshot.exists ? userDocSnapshot['Username'] : 'Unknown';
+
+          final LatLng helpLoc = LatLng(
+            double.parse(data['Latitude'].toString()),
+            double.parse(data['Longitude'].toString()),
+          );
+
+          final double km = distanceCalc.as(LengthUnit.Kilometer, userLocation, helpLoc);
+
+          return {
+            'id': doc.id,
+            'Latitude': data['Latitude'],
+            'Longitude': data['Longitude'],
+            'Owner': data['Owner'],
+            'Date': data['Date'],
+            'Description': data['Description'],
+            'Status': data['Status'],
+            'Owner Name': ownerName,
+            'Distance': km,
+          };
+        }),
+      );
+
+      helpRequests.sort((a, b) => (a['Distance'] as double).compareTo(b['Distance'] as double));
+      return helpRequests;
     });
   }
 

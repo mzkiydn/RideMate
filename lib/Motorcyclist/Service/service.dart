@@ -29,6 +29,8 @@ class _ServiceState extends State<Service> {
   MapController? _mapController; // MapController is nullable
   bool isOwner = false; // Simulate the role of the user (owner or not)
   String helpDescription = '';
+  String? _currentUserId;
+
 
   @override
   void dispose() {
@@ -40,8 +42,10 @@ class _ServiceState extends State<Service> {
   void initState() {
     super.initState();
     _mapController = MapController();
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
     initializeMap();
   }
+
 
   Future<void> initializeMap() async {
     final userLocation = await serviceController.getCurrentLocation();
@@ -143,10 +147,6 @@ class _ServiceState extends State<Service> {
     );
   }
 
-  Stream<List<Map<String, dynamic>>> getHelpRequestsStream() {
-    return serviceController.getHelpRequestsStream();
-  }
-
   Future<void> showHelpRequestDialog(Map<String, dynamic> helpRequest) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     final isCurrentUserOwner = currentUser != null && helpRequest['Owner'] == currentUser.uid;
@@ -243,7 +243,9 @@ class _ServiceState extends State<Service> {
           Expanded(
             flex: 3,
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: getHelpRequestsStream(),
+              stream: _userLocation != null
+                  ? serviceController.getHelpRequestsStreamWithDistance(_userLocation!)
+                  : const Stream.empty(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());
@@ -445,29 +447,47 @@ class _ServiceState extends State<Service> {
                         ),
 
                         // Help requests list
-                        ListView.builder(
-                          itemCount: help.length,
-                          itemBuilder: (context, index) {
-                            final emergency = help[index];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              child: ListTile(
-                                title: Text(emergency['Owner Name'] ?? 'Unknown'),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Description: ${emergency['Description']}'),
-                                    if (emergency.containsKey('Distance'))
-                                      Text('Distance: ${emergency['Distance'].toStringAsFixed(2)} km'),
-                                  ],
-                                ),
-                                onTap: () {
-                                  centerMapOnWorkshop(emergency);
-                                },
-                              ),
+                        _userLocation == null
+                            ? Center(child: Text('Enable location to see help requests.'))
+                            : StreamBuilder<List<Map<String, dynamic>>>(
+                          stream: serviceController.getHelpRequestsStreamWithDistance(_userLocation!),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return Center(child: CircularProgressIndicator());
+                            }
+                            final emergencies = snapshot.data!;
+                            if (emergencies.isEmpty) {
+                              return Center(child: Text('No emergency requests.'));
+                            }
+                            return ListView.builder(
+                              itemCount: emergencies.length,
+                              itemBuilder: (context, index) {
+                                final emergency = emergencies[index];
+                                final isCurrentUser = emergency['Owner'] == _currentUserId;
+                                return Card(
+                                  color: isCurrentUser ? Colors.blue.shade50 : null,
+                                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  child: ListTile(
+                                    title: Text(
+                                      emergency['Owner Name'] ?? 'Unknown',
+                                      style: TextStyle(fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.normal),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Description: ${emergency['Description']}'),
+                                        Text('Distance: ${emergency['Distance'].toStringAsFixed(2)} km'),
+                                      ],
+                                    ),
+                                    onTap: () {
+                                      centerMapOnWorkshop(emergency);
+                                    },
+                                  ),
+                                );
+                              },
                             );
                           },
-                        ),
+                        )
 
                       ],
                     ),

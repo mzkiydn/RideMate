@@ -18,6 +18,8 @@ class _RegisterPageState extends State<Register> {
   final List<String> userTypes = ['Motorcyclist', 'Mechanic', 'Workshop Owner'];
   bool isLoading = false;
   final RegisterController controller = RegisterController();
+  bool _isPasswordVisible = false;
+
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +172,7 @@ class _RegisterPageState extends State<Register> {
       {bool obscure = false}) {
     return TextField(
       controller: controller,
-      obscureText: obscure,
+      obscureText: obscure ? !_isPasswordVisible : false,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.deepPurple),
@@ -178,6 +180,19 @@ class _RegisterPageState extends State<Register> {
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.deepPurple),
         ),
+        suffixIcon: obscure
+            ? IconButton(
+          icon: Icon(
+            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+            color: Colors.deepPurple,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordVisible = !_isPasswordVisible;
+            });
+          },
+        )
+            : null,
       ),
     );
   }

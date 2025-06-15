@@ -43,11 +43,33 @@ class LoginController {
       final decryptedPassword = EncryptionHelper.decryptText(encryptedPassword);
       print("Password: $decryptedPassword");
       if (decryptedPassword != password) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Incorrect password')),
-        );
-        return;
+        try {
+          // Try Firebase sign in — password may be updated via reset
+          final userCredential = await FirebaseAuth.instance
+              .signInWithEmailAndPassword(email: storedEmail, password: password);
+
+          final firebaseUid = userCredential.user?.uid;
+
+          // 🔐 Update Firestore with new encrypted password
+          final newEncrypted = EncryptionHelper.encryptText(password);
+          await FirebaseFirestore.instance
+              .collection('User')
+              .doc(userDoc.id)
+              .update({
+            'Password': newEncrypted,
+            'User ID': firebaseUid, // Optional: Keep synced
+          });
+
+          Navigator.pushReplacementNamed(context, '/feed');
+          return;
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Incorrect password')),
+          );
+          return;
+        }
       }
+
 
       // Step 3: Authenticate using Firebase Auth
       final userCredential = await FirebaseAuth.instance

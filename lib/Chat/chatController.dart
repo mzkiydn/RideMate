@@ -42,7 +42,7 @@ class ChatController {
       final data = doc.data();
       if (doc.id == currentUserId) continue; // exclude self
       data['Type'] = 'User';
-      data['Title'] = data['Name'];
+      data['Title'] = data['Username'];
       data['id'] = 'User.${doc.id}';
       results.add(data);
     }
@@ -119,12 +119,7 @@ class ChatController {
   }
 
   /// Send a message in a chat
-  Future<void> sendMessage({
-    required String chatId,
-    required String senderId,
-    required String message,
-    required List<String> participants,
-  }) async {
+  Future<void> sendMessage({required String chatId, required String senderId, required String message, required List<String> participants}) async {
     final now = Timestamp.now();
 
     await _firestore.collection('Chat').doc(chatId).set({
